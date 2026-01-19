@@ -1,0 +1,46 @@
+# =============================================================================
+# InterView AI - Python Dependencies
+# =============================================================================
+# Last updated: 2026-01-19
+# Python version: 3.11+
+
+# -----------------------------------------------------------------------------
+# Core AI
+# -----------------------------------------------------------------------------
+google-generativeai>=0.8.5  # Gemini API
+faster-whisper>=1.0.0       # Local STT (requires CUDA for GPU acceleration)
+pypdf>=4.0.0                # Resume PDF parsing
+
+# -----------------------------------------------------------------------------
+# Audio Processing
+# -----------------------------------------------------------------------------
+numpy>=1.24.0               # Numerical operations for audio analysis
+sounddevice>=0.4.6          # Audio recording (optional, for future mic input)
+pydub>=0.25.1               # Audio format conversion
+pyttsx3>=2.90               # Local TTS
+
+# -----------------------------------------------------------------------------
+# Web Interface
+# -----------------------------------------------------------------------------
+streamlit>=1.30.0           # Dashboard UI
+streamlit-webrtc>=0.47.0    # Browser audio recording (optional)
+
+# -----------------------------------------------------------------------------
+# Configuration & Utils
+# -----------------------------------------------------------------------------
+python-dotenv>=1.0.0        # Environment variable loading
+pydantic>=2.0.0             # Data validation
+pydantic-settings>=2.0.0    # Settings management
+
+# -----------------------------------------------------------------------------
+# Development & Testing
+# -----------------------------------------------------------------------------
+pytest>=8.0.0               # Testing framework
+pytest-asyncio>=0.23.0      # Async test support
+pytest-cov>=4.1.0           # Coverage reporting
+
+# -----------------------------------------------------------------------------
+# Optional: GPU Acceleration (uncomment if using CUDA)
+# -----------------------------------------------------------------------------
+# torch>=2.0.0              # PyTorch for GPU-accelerated Whisper
+# ctranslate2>=4.0.0        # Faster Whisper backend

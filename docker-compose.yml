@@ -1,0 +1,58 @@
+# =============================================================================
+# InterView AI - Docker Compose
+# =============================================================================
+
+services:
+  interview-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: interview-ai
+
+    ports:
+      - "8501:8501"
+
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - WHISPER_MODEL=${WHISPER_MODEL:-tiny}
+      - WHISPER_DEVICE=${WHISPER_DEVICE:-cpu}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+
+    volumes:
+      # Mount data directory for persistence
+      - ./data:/app/data
+
+      # Mount .env file
+      - ./.env:/app/.env:ro
+
+    restart: unless-stopped
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8501/_stcore/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# Optional: GPU support (uncomment for CUDA)
+# interview-ai-gpu:
+#   extends:
+#     service: interview-ai
+#   environment:
+#     - WHISPER_DEVICE=cuda
+#   deploy:
+#     resources:
+#       reservations:
+#         devices:
+#           - driver: nvidia
+#             count: 1
+#             capabilities: [gpu]
