@@ -61,14 +61,16 @@ copy .env.example .env
 ### 3. Run the Application
 
 ```bash
-# Run Streamlit dashboard
+# Run FastAPI server with HTML/CSS/JS frontend
 python main.py
 
 # Or run CLI demo for testing
 python main.py --cli
 ```
 
-Open http://localhost:8501 in your browser.
+Open http://localhost:8000 in your browser.
+
+- **API Docs**: http://localhost:8000/api/docs
 
 ## Usage
 
@@ -151,4 +153,4 @@ pytest tests/ --cov=src --cov-report=html
 
 ## License
 
-MIT License - See LICENSE file for details.
+Apache License 2.0 - See [LICENSE](LICENSE) file for details.

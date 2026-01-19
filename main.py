@@ -3,7 +3,7 @@
 InterView AI - Main Entry Point.
 
 Usage:
-    python main.py          # Run the Streamlit dashboard
+    python main.py          # Run the FastAPI server with HTML/CSS/JS frontend
     python main.py --cli    # Run in CLI mode (for testing)
 """
 
@@ -35,20 +35,24 @@ def create_data_directories():
         dir_path.mkdir(parents=True, exist_ok=True)
 
 
-def run_streamlit():
-    """Launch the Streamlit dashboard."""
-    import subprocess
+def run_server(host: str = "127.0.0.1", port: int = 8000):
+    """Launch the FastAPI server with uvicorn."""
+    import uvicorn
     
-    dashboard_path = Path(__file__).parent / "src" / "ui" / "dashboard.py"
+    print("\n" + "=" * 60)
+    print("🎙️  InterView AI - Real-Time Career Coach")
+    print("=" * 60)
+    print(f"\n🌐 Open in browser: http://{host}:{port}")
+    print(f"📚 API Docs: http://{host}:{port}/api/docs")
+    print("\nPress Ctrl+C to stop the server\n")
     
-    # Run streamlit
-    subprocess.run([
-        sys.executable, "-m", "streamlit", "run",
-        str(dashboard_path),
-        "--server.port=8501",
-        "--server.headless=true",
-        "--browser.gatherUsageStats=false",
-    ])
+    uvicorn.run(
+        "src.api.app:app",
+        host=host,
+        port=port,
+        reload=True,  # Enable hot reload for development
+        log_level="info",
+    )
 
 
 async def run_cli_demo():
@@ -145,7 +149,18 @@ def main():
     parser.add_argument(
         "--cli",
         action="store_true",
-        help="Run in CLI mode instead of Streamlit",
+        help="Run in CLI mode instead of web server",
+    )
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host to bind the server (default: 127.0.0.1)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port to bind the server (default: 8000)",
     )
     parser.add_argument(
         "--debug",
@@ -167,9 +182,7 @@ def main():
     if args.cli:
         asyncio.run(run_cli_demo())
     else:
-        print("\n🚀 Starting InterView AI Dashboard...")
-        print("   Open http://localhost:8501 in your browser\n")
-        run_streamlit()
+        run_server(host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

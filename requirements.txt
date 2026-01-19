@@ -20,10 +20,15 @@ pydub>=0.25.1               # Audio format conversion
 pyttsx3>=2.90               # Local TTS
 
 # -----------------------------------------------------------------------------
-# Web Interface
+# Web Framework (FastAPI)
 # -----------------------------------------------------------------------------
-streamlit>=1.30.0           # Dashboard UI
-streamlit-webrtc>=0.47.0    # Browser audio recording (optional)
+fastapi>=0.109.0            # API framework
+uvicorn[standard]>=0.27.0   # ASGI server
+python-multipart>=0.0.6     # File upload support
+
+# Optional: Keep streamlit for alternative UI
+# streamlit>=1.30.0
+# streamlit-webrtc>=0.47.0
 
 # -----------------------------------------------------------------------------
 # Configuration & Utils

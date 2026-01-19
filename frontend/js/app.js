@@ -1,0 +1,432 @@
+/**
+ * InterView AI - Main Application JavaScript
+ * 
+ * Handles:
+ * - File upload and resume parsing
+ * - Interview session management
+ * - API communication
+ * - UI state management
+ */
+
+// =============================================================================
+// Configuration
+// =============================================================================
+
+const API_BASE = '/api';
+
+// =============================================================================
+// State
+// =============================================================================
+
+const state = {
+    sessionId: null,
+    resumeText: '',
+    jobDescription: '',
+    currentQuestion: '',
+    questionNumber: 0,
+    isInterviewActive: false,
+};
+
+// =============================================================================
+// DOM Elements
+// =============================================================================
+
+const elements = {
+    // Panels
+    setupPanel: document.getElementById('setup-panel'),
+    interviewPanel: document.getElementById('interview-panel'),
+    summaryPanel: document.getElementById('summary-panel'),
+    
+    // Setup
+    resumeDropzone: document.getElementById('resume-dropzone'),
+    resumeInput: document.getElementById('resume-input'),
+    resumeStatus: document.getElementById('resume-status'),
+    jobDescription: document.getElementById('job-description'),
+    startBtn: document.getElementById('start-btn'),
+    
+    // Interview
+    alertBanner: document.getElementById('alert-banner'),
+    alertText: document.getElementById('alert-text'),
+    questionNumber: document.getElementById('question-number'),
+    questionText: document.getElementById('question-text'),
+    answerInput: document.getElementById('answer-input'),
+    submitAnswerBtn: document.getElementById('submit-answer-btn'),
+    nextQuestionBtn: document.getElementById('next-question-btn'),
+    endSessionBtn: document.getElementById('end-session-btn'),
+    
+    // Metrics
+    metricWpm: document.getElementById('metric-wpm'),
+    metricFillers: document.getElementById('metric-fillers'),
+    metricQuestions: document.getElementById('metric-questions'),
+    metricScore: document.getElementById('metric-score'),
+    
+    // Evaluation
+    evaluationCard: document.getElementById('evaluation-card'),
+    evalTechnical: document.getElementById('eval-technical'),
+    evalClarity: document.getElementById('eval-clarity'),
+    evalDepth: document.getElementById('eval-depth'),
+    evalComplete: document.getElementById('eval-complete'),
+    evalFeedback: document.getElementById('eval-feedback'),
+    
+    // Summary
+    summaryDuration: document.getElementById('summary-duration'),
+    summaryQuestions: document.getElementById('summary-questions'),
+    summaryScore: document.getElementById('summary-score'),
+    summaryWpm: document.getElementById('summary-wpm'),
+    summaryFillers: document.getElementById('summary-fillers'),
+    restartBtn: document.getElementById('restart-btn'),
+    
+    // Loading
+    loadingOverlay: document.getElementById('loading-overlay'),
+    loadingText: document.getElementById('loading-text'),
+};
+
+// =============================================================================
+// Utility Functions
+// =============================================================================
+
+function showLoading(message = 'Processing...') {
+    elements.loadingText.textContent = message;
+    elements.loadingOverlay.classList.remove('hidden');
+}
+
+function hideLoading() {
+    elements.loadingOverlay.classList.add('hidden');
+}
+
+function showPanel(panel) {
+    elements.setupPanel.classList.add('hidden');
+    elements.interviewPanel.classList.add('hidden');
+    elements.summaryPanel.classList.add('hidden');
+    panel.classList.remove('hidden');
+}
+
+function showAlert(message, level = 'ok') {
+    elements.alertText.textContent = message;
+    elements.alertBanner.className = `alert-banner ${level}`;
+    elements.alertBanner.classList.remove('hidden');
+}
+
+function hideAlert() {
+    elements.alertBanner.classList.add('hidden');
+}
+
+function updateStartButton() {
+    const canStart = state.resumeText.length > 50 && 
+                     elements.jobDescription.value.trim().length > 20;
+    elements.startBtn.disabled = !canStart;
+}
+
+async function apiCall(endpoint, options = {}) {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        ...options,
+    });
+    
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'API request failed');
+    }
+    
+    return response.json();
+}
+
+// =============================================================================
+// File Upload Handling
+// =============================================================================
+
+function setupFileUpload() {
+    const dropzone = elements.resumeDropzone;
+    const input = elements.resumeInput;
+    
+    // Click to upload
+    dropzone.addEventListener('click', () => input.click());
+    
+    // File selected
+    input.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleFileUpload(e.target.files[0]);
+        }
+    });
+    
+    // Drag and drop
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+    });
+    
+    dropzone.addEventListener('dragleave', () => {
+        dropzone.classList.remove('dragover');
+    });
+    
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        
+        if (e.dataTransfer.files.length > 0) {
+            handleFileUpload(e.dataTransfer.files[0]);
+        }
+    });
+}
+
+async function handleFileUpload(file) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+        showStatus('error', 'Please upload a PDF file');
+        return;
+    }
+    
+    showLoading('Parsing resume...');
+    
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch(`${API_BASE}/upload/resume`, {
+            method: 'POST',
+            body: formData,
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to parse resume');
+        }
+        
+        const data = await response.json();
+        state.resumeText = data.text_content;
+        
+        showStatus('success', `✅ Resume loaded: ${data.text_length} characters`);
+        updateStartButton();
+        
+    } catch (error) {
+        console.error('Upload error:', error);
+        showStatus('error', `❌ ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+function showStatus(type, message) {
+    elements.resumeStatus.textContent = message;
+    elements.resumeStatus.className = `status-message ${type}`;
+    elements.resumeStatus.classList.remove('hidden');
+}
+
+// =============================================================================
+// Interview Session Management
+// =============================================================================
+
+async function startSession() {
+    showLoading('Starting interview...');
+    
+    try {
+        const response = await apiCall('/session/start', {
+            method: 'POST',
+            body: JSON.stringify({
+                resume_text: state.resumeText,
+                job_description: elements.jobDescription.value.trim(),
+            }),
+        });
+        
+        state.sessionId = response.session_id;
+        state.isInterviewActive = true;
+        
+        // Get first question
+        await getNextQuestion();
+        
+        showPanel(elements.interviewPanel);
+        showAlert('✅ Interview started. Good luck!', 'ok');
+        
+    } catch (error) {
+        console.error('Start session error:', error);
+        alert(`Failed to start interview: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function getNextQuestion() {
+    showLoading('Generating question...');
+    hideAlert();
+    
+    try {
+        const response = await apiCall('/question/next');
+        
+        state.currentQuestion = response.question_text;
+        state.questionNumber = response.question_number;
+        
+        elements.questionNumber.textContent = state.questionNumber;
+        elements.questionText.textContent = state.currentQuestion;
+        elements.metricQuestions.textContent = state.questionNumber;
+        
+        // Reset answer area
+        elements.answerInput.value = '';
+        elements.answerInput.focus();
+        elements.submitAnswerBtn.disabled = false;
+        elements.nextQuestionBtn.disabled = true;
+        elements.evaluationCard.classList.add('hidden');
+        
+    } catch (error) {
+        console.error('Get question error:', error);
+        alert(`Failed to get question: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function submitAnswer() {
+    const answerText = elements.answerInput.value.trim();
+    
+    if (!answerText) {
+        alert('Please enter your answer first');
+        return;
+    }
+    
+    showLoading('Evaluating your answer...');
+    
+    try {
+        // Estimate duration based on word count
+        const wordCount = answerText.split(/\s+/).length;
+        const duration = wordCount / 2.5; // ~150 WPM estimate
+        
+        const response = await apiCall('/answer/submit', {
+            method: 'POST',
+            body: JSON.stringify({
+                session_id: state.sessionId,
+                answer_text: answerText,
+                duration_seconds: duration,
+            }),
+        });
+        
+        // Update coaching metrics
+        const coaching = response.coaching;
+        elements.metricWpm.textContent = Math.round(coaching.words_per_minute);
+        elements.metricFillers.textContent = coaching.filler_count;
+        
+        // Show coaching alert
+        if (coaching.alert_level === 'warning') {
+            showAlert(coaching.primary_alert, 'warning');
+        } else {
+            showAlert(coaching.primary_alert, 'ok');
+        }
+        
+        // Show evaluation
+        const evaluation = response.evaluation;
+        elements.evalTechnical.textContent = evaluation.technical_accuracy;
+        elements.evalClarity.textContent = evaluation.clarity;
+        elements.evalDepth.textContent = evaluation.depth;
+        elements.evalComplete.textContent = evaluation.completeness;
+        elements.metricScore.textContent = evaluation.average_score.toFixed(1);
+        
+        // Show feedback
+        let feedbackHtml = '';
+        if (evaluation.positive_note) {
+            feedbackHtml += `👍 <strong>Strength:</strong> ${evaluation.positive_note}<br>`;
+        }
+        if (evaluation.improvement_tip) {
+            feedbackHtml += `💡 <strong>Tip:</strong> ${evaluation.improvement_tip}`;
+        }
+        elements.evalFeedback.innerHTML = feedbackHtml;
+        
+        elements.evaluationCard.classList.remove('hidden');
+        elements.submitAnswerBtn.disabled = true;
+        elements.nextQuestionBtn.disabled = false;
+        
+    } catch (error) {
+        console.error('Submit answer error:', error);
+        alert(`Failed to process answer: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+async function endSession() {
+    if (!confirm('Are you sure you want to end the interview?')) {
+        return;
+    }
+    
+    showLoading('Generating summary...');
+    
+    try {
+        const response = await apiCall('/session/end', {
+            method: 'POST',
+        });
+        
+        // Show summary
+        elements.summaryDuration.textContent = response.duration_minutes.toFixed(1);
+        elements.summaryQuestions.textContent = response.questions_asked;
+        elements.summaryScore.textContent = response.average_score.toFixed(1);
+        elements.summaryWpm.textContent = Math.round(response.average_wpm);
+        elements.summaryFillers.textContent = response.total_fillers;
+        
+        state.isInterviewActive = false;
+        showPanel(elements.summaryPanel);
+        
+    } catch (error) {
+        console.error('End session error:', error);
+        alert(`Failed to end session: ${error.message}`);
+    } finally {
+        hideLoading();
+    }
+}
+
+function restartInterview() {
+    // Reset state
+    state.sessionId = null;
+    state.resumeText = '';
+    state.jobDescription = '';
+    state.currentQuestion = '';
+    state.questionNumber = 0;
+    state.isInterviewActive = false;
+    
+    // Reset UI
+    elements.resumeInput.value = '';
+    elements.resumeStatus.classList.add('hidden');
+    elements.jobDescription.value = '';
+    elements.startBtn.disabled = true;
+    elements.metricWpm.textContent = '0';
+    elements.metricFillers.textContent = '0';
+    elements.metricQuestions.textContent = '0';
+    elements.metricScore.textContent = '0.0';
+    
+    showPanel(elements.setupPanel);
+}
+
+// =============================================================================
+// Event Listeners
+// =============================================================================
+
+function setupEventListeners() {
+    // Setup panel
+    elements.jobDescription.addEventListener('input', updateStartButton);
+    elements.startBtn.addEventListener('click', startSession);
+    
+    // Interview panel
+    elements.submitAnswerBtn.addEventListener('click', submitAnswer);
+    elements.nextQuestionBtn.addEventListener('click', getNextQuestion);
+    elements.endSessionBtn.addEventListener('click', endSession);
+    
+    // Allow Ctrl+Enter to submit answer
+    elements.answerInput.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter' && !elements.submitAnswerBtn.disabled) {
+            submitAnswer();
+        }
+    });
+    
+    // Summary panel
+    elements.restartBtn.addEventListener('click', restartInterview);
+}
+
+// =============================================================================
+// Initialization
+// =============================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🎙️ InterView AI initialized');
+    
+    setupFileUpload();
+    setupEventListeners();
+    
+    // Focus on job description if no resume yet
+    elements.jobDescription.focus();
+});

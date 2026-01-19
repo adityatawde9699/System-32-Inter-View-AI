@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="InterView AI - Your Real-Time AI Career Coach">
+    
+    <title>InterView AI - Real-Time Career Coach</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <span class="logo-icon">🎙️</span>
+                <span class="logo-text">InterView AI</span>
+            </div>
+            <nav class="nav">
+                <a href="#" class="nav-link active">Interview</a>
+                <a href="/api/docs" class="nav-link" target="_blank">API Docs</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        
+        <!-- Setup Panel (Initial State) -->
+        <section id="setup-panel" class="panel setup-panel">
+            <div class="panel-header">
+                <h2>📋 Interview Setup</h2>
+                <p class="subtitle">Upload your resume and add the job description to get started</p>
+            </div>
+            
+            <div class="setup-grid">
+                <!-- Resume Upload -->
+                <div class="setup-card">
+                    <h3>📄 Resume</h3>
+                    <div class="file-upload" id="resume-dropzone">
+                        <input type="file" id="resume-input" accept=".pdf" hidden>
+                        <div class="upload-content">
+                            <div class="upload-icon">📁</div>
+                            <p>Drop your resume PDF here</p>
+                            <span class="upload-hint">or click to browse</span>
+                        </div>
+                    </div>
+                    <div id="resume-status" class="status-message hidden"></div>
+                </div>
+                
+                <!-- Job Description -->
+                <div class="setup-card">
+                    <h3>💼 Job Description</h3>
+                    <textarea 
+                        id="job-description" 
+                        class="input-textarea"
+                        placeholder="Paste the job description here..."
+                        rows="8"
+                    ></textarea>
+                </div>
+            </div>
+            
+            <button id="start-btn" class="btn btn-primary btn-large" disabled>
+                🎬 Start Interview
+            </button>
+        </section>
+
+        <!-- Interview Panel (Active State) -->
+        <section id="interview-panel" class="panel interview-panel hidden">
+            
+            <!-- Coaching HUD -->
+            <div class="coaching-hud">
+                <div class="hud-grid">
+                    <div class="hud-metric">
+                        <div class="metric-value" id="metric-wpm">0</div>
+                        <div class="metric-label">Words/Min</div>
+                    </div>
+                    <div class="hud-metric">
+                        <div class="metric-value" id="metric-fillers">0</div>
+                        <div class="metric-label">Filler Words</div>
+                    </div>
+                    <div class="hud-metric">
+                        <div class="metric-value" id="metric-questions">0</div>
+                        <div class="metric-label">Questions</div>
+                    </div>
+                    <div class="hud-metric">
+                        <div class="metric-value" id="metric-score">0.0</div>
+                        <div class="metric-label">Avg Score</div>
+                    </div>
+                </div>
+                
+                <!-- Alert Banner -->
+                <div id="alert-banner" class="alert-banner hidden">
+                    <span id="alert-text">✅ Ready to begin</span>
+                </div>
+            </div>
+            
+            <!-- Question Card -->
+            <div class="question-card">
+                <div class="question-header">
+                    <span class="question-badge">Question <span id="question-number">1</span></span>
+                </div>
+                <p id="question-text" class="question-text">
+                    Click "Get Question" to receive your first interview question...
+                </p>
+            </div>
+            
+            <!-- Answer Section -->
+            <div class="answer-section">
+                <h3>💬 Your Answer</h3>
+                <textarea 
+                    id="answer-input" 
+                    class="input-textarea answer-textarea"
+                    placeholder="Type your answer here... (Voice input coming soon)"
+                    rows="5"
+                ></textarea>
+                
+                <div class="answer-actions">
+                    <button id="submit-answer-btn" class="btn btn-primary" disabled>
+                        📤 Submit Answer
+                    </button>
+                    <button id="next-question-btn" class="btn btn-secondary" disabled>
+                        ➡️ Next Question
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Evaluation Card -->
+            <div id="evaluation-card" class="evaluation-card hidden">
+                <h3>📊 Evaluation</h3>
+                <div class="eval-grid">
+                    <div class="eval-item">
+                        <div class="eval-score" id="eval-technical">-</div>
+                        <div class="eval-label">Technical</div>
+                    </div>
+                    <div class="eval-item">
+                        <div class="eval-score" id="eval-clarity">-</div>
+                        <div class="eval-label">Clarity</div>
+                    </div>
+                    <div class="eval-item">
+                        <div class="eval-score" id="eval-depth">-</div>
+                        <div class="eval-label">Depth</div>
+                    </div>
+                    <div class="eval-item">
+                        <div class="eval-score" id="eval-complete">-</div>
+                        <div class="eval-label">Completeness</div>
+                    </div>
+                </div>
+                <div id="eval-feedback" class="eval-feedback"></div>
+            </div>
+            
+            <!-- End Session Button -->
+            <div class="session-controls">
+                <button id="end-session-btn" class="btn btn-danger">
+                    🛑 End Interview
+                </button>
+            </div>
+        </section>
+        
+        <!-- Summary Panel (After Interview) -->
+        <section id="summary-panel" class="panel summary-panel hidden">
+            <div class="summary-header">
+                <h2>🎉 Interview Complete!</h2>
+                <p class="subtitle">Here's how you did</p>
+            </div>
+            
+            <div class="summary-grid">
+                <div class="summary-stat">
+                    <div class="stat-value" id="summary-duration">0</div>
+                    <div class="stat-label">Minutes</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-value" id="summary-questions">0</div>
+                    <div class="stat-label">Questions</div>
+                </div>
+                <div class="summary-stat highlight">
+                    <div class="stat-value" id="summary-score">0.0</div>
+                    <div class="stat-label">Avg Score</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-value" id="summary-wpm">0</div>
+                    <div class="stat-label">Avg WPM</div>
+                </div>
+                <div class="summary-stat">
+                    <div class="stat-value" id="summary-fillers">0</div>
+                    <div class="stat-label">Filler Words</div>
+                </div>
+            </div>
+            
+            <button id="restart-btn" class="btn btn-primary btn-large">
+                🔄 Start New Interview
+            </button>
+        </section>
+        
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>InterView AI | Built with FastAPI, Gemini & Whisper | 
+            <a href="https://github.com/adityatawde9699/System-32---Inter-View-AI" target="_blank">GitHub</a>
+        </p>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay hidden">
+        <div class="spinner"></div>
+        <p id="loading-text">Processing...</p>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
