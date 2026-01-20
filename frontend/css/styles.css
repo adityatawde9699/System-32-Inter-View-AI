@@ -482,6 +482,69 @@ body::before {
     margin-bottom: var(--spacing-md);
 }
 
+/* Recording Controls */
+.recording-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.btn-record {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    min-width: 160px;
+}
+
+.btn-record:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.btn-record.recording {
+    animation: recordPulse 1.5s ease-in-out infinite;
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+@keyframes recordPulse {
+    0%, 100% { 
+        opacity: 1;
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+    50% { 
+        opacity: 0.85;
+        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+    }
+}
+
+.volume-meter-container {
+    flex: 1;
+    height: 12px;
+    background: var(--color-bg-secondary);
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.volume-meter {
+    height: 100%;
+    background: linear-gradient(90deg, #10b981, #22c55e);
+    width: 0%;
+    transition: width 0.1s ease;
+    border-radius: 6px;
+}
+
+.recording-status {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    min-width: 100px;
+    text-align: right;
+}
+
 .answer-actions {
     display: flex;
     gap: var(--spacing-md);

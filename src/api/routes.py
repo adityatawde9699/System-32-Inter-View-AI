@@ -5,7 +5,10 @@ FastAPI router with all interview endpoints.
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from typing import Dict
+
+import numpy as np
+from fastapi import APIRouter, HTTPException, UploadFile, File, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import JSONResponse
 
 from src.api.schemas import (
@@ -19,7 +22,7 @@ from src.api.schemas import (
     SessionStatsResponse,
 )
 from src.app.orchestrator import InterviewOrchestrator
-from src.app.coaching import AudioCoach
+from src.app.coaching import AudioCoach, audio_bytes_to_numpy
 from src.infra.utils.pdf_parser import extract_from_bytes
 
 
@@ -27,16 +30,50 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["interview"])
 
-# Global orchestrator instance (in production, use dependency injection)
-_orchestrator: InterviewOrchestrator | None = None
+# Session-based orchestrator storage for multi-user support
+sessions: Dict[str, InterviewOrchestrator] = {}
+
+# Session timestamps for cleanup
+from datetime import datetime, timedelta
+session_created: Dict[str, datetime] = {}
+
+SESSION_TIMEOUT_HOURS = 2  # Cleanup sessions older than this
 
 
-def get_orchestrator() -> InterviewOrchestrator:
-    """Get or create the orchestrator instance."""
-    global _orchestrator
-    if _orchestrator is None:
-        _orchestrator = InterviewOrchestrator()
-    return _orchestrator
+def get_orchestrator(session_id: str) -> InterviewOrchestrator:
+    """Get orchestrator for a specific session."""
+    if session_id not in sessions:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return sessions[session_id]
+
+
+def cleanup_stale_sessions() -> int:
+    """
+    Remove sessions older than SESSION_TIMEOUT_HOURS.
+    Returns the number of sessions cleaned up.
+    Call this periodically or on each request.
+    """
+    if not session_created:
+        return 0
+    
+    now = datetime.now()
+    cutoff = now - timedelta(hours=SESSION_TIMEOUT_HOURS)
+    stale_sessions = [
+        sid for sid, created in session_created.items()
+        if created < cutoff
+    ]
+    
+    for sid in stale_sessions:
+        sessions.pop(sid, None)
+        session_created.pop(sid, None)
+        logger.info(f"Cleaned up stale session: {sid}")
+    
+    return len(stale_sessions)
+
+
+def get_active_session_count() -> int:
+    """Get count of active sessions for monitoring."""
+    return len(sessions)
 
 
 # =============================================================================
@@ -47,12 +84,22 @@ def get_orchestrator() -> InterviewOrchestrator:
 async def start_session(request: StartSessionRequest):
     """Start a new interview session."""
     try:
-        orchestrator = get_orchestrator()
+        # Cleanup stale sessions periodically
+        cleanup_stale_sessions()
+        
+        # Create new orchestrator for this session
+        orchestrator = InterviewOrchestrator()
         
         session_id = await orchestrator.start_session(
             resume_text=request.resume_text,
             job_description=request.job_description,
         )
+        
+        # Store in sessions dict for multi-user support
+        sessions[session_id] = orchestrator
+        session_created[session_id] = datetime.now()
+        
+        logger.info(f"Started session {session_id}. Active sessions: {len(sessions)}")
         
         return SessionResponse(
             session_id=session_id,
@@ -65,15 +112,18 @@ async def start_session(request: StartSessionRequest):
 
 
 @router.post("/session/end", response_model=SessionStatsResponse)
-async def end_session():
+async def end_session(session_id: str = Query(..., description="Session ID to end")):
     """End the current interview session."""
     try:
-        orchestrator = get_orchestrator()
+        orchestrator = get_orchestrator(session_id)
         
         if not orchestrator.session:
             raise HTTPException(status_code=400, detail="No active session")
         
         summary = await orchestrator.end_session()
+        
+        # Clean up session from dict
+        sessions.pop(session_id, None)
         
         return SessionStatsResponse(
             session_id=summary.get("session_id", ""),
@@ -91,9 +141,9 @@ async def end_session():
 
 
 @router.get("/session/stats", response_model=SessionStatsResponse)
-async def get_session_stats():
+async def get_session_stats(session_id: str = Query(..., description="Session ID")):
     """Get current session statistics."""
-    orchestrator = get_orchestrator()
+    orchestrator = get_orchestrator(session_id)
     
     if not orchestrator.session:
         raise HTTPException(status_code=400, detail="No active session")
@@ -115,10 +165,10 @@ async def get_session_stats():
 # =============================================================================
 
 @router.get("/question/next", response_model=QuestionResponse)
-async def get_next_question():
+async def get_next_question(session_id: str = Query(..., description="Session ID")):
     """Get the next interview question."""
     try:
-        orchestrator = get_orchestrator()
+        orchestrator = get_orchestrator(session_id)
         
         if not orchestrator.session:
             raise HTTPException(status_code=400, detail="No active session. Start a session first.")
@@ -142,7 +192,7 @@ async def get_next_question():
 async def submit_answer(request: SubmitAnswerRequest):
     """Submit an answer and get evaluation."""
     try:
-        orchestrator = get_orchestrator()
+        orchestrator = get_orchestrator(request.session_id)
         
         if not orchestrator.session:
             raise HTTPException(status_code=400, detail="No active session")
@@ -196,6 +246,70 @@ async def submit_answer(request: SubmitAnswerRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/answer/audio", response_model=AnswerResultResponse)
+async def submit_audio_answer(
+    session_id: str = Query(..., description="Session ID"),
+    audio: UploadFile = File(..., description="Audio file (WebM, WAV, MP3, etc.)"),
+):
+    """
+    Submit an audio answer for transcription and evaluation.
+    
+    This endpoint:
+    1. Receives audio file from the frontend
+    2. Transcribes using Whisper (STT)
+    3. Analyzes delivery with AudioCoach
+    4. Evaluates content with Gemini
+    
+    Requires ffmpeg installed for WebM/non-WAV formats.
+    """
+    try:
+        orchestrator = get_orchestrator(session_id)
+        
+        if not orchestrator.session:
+            raise HTTPException(status_code=400, detail="No active session")
+        
+        # Read audio bytes
+        audio_bytes = await audio.read()
+        
+        if len(audio_bytes) < 1000:
+            raise HTTPException(status_code=400, detail="Audio file too small or empty")
+        
+        logger.info(f"Received audio: {len(audio_bytes)} bytes, type: {audio.content_type}")
+        
+        # Process through orchestrator (Whisper + Coach + Gemini)
+        transcript, coaching, evaluation = await orchestrator.process_answer(
+            audio_bytes=audio_bytes,
+            sample_rate=16000,
+        )
+        
+        return AnswerResultResponse(
+            session_id=session_id,
+            transcript=transcript,
+            coaching=CoachingFeedbackResponse(
+                volume_status=coaching.volume_status,
+                pace_status=coaching.pace_status,
+                filler_count=coaching.filler_count,
+                words_per_minute=coaching.words_per_minute,
+                primary_alert=coaching.primary_alert,
+                alert_level=coaching.alert_level.value,
+            ),
+            evaluation=EvaluationResponse(
+                technical_accuracy=evaluation.technical_accuracy,
+                clarity=evaluation.clarity,
+                depth=evaluation.depth,
+                completeness=evaluation.completeness,
+                average_score=evaluation.average_score,
+                improvement_tip=evaluation.improvement_tip,
+                positive_note=evaluation.positive_note,
+            ),
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to process audio answer: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # =============================================================================
 # File Upload
 # =============================================================================
@@ -231,3 +345,66 @@ async def upload_resume(file: UploadFile = File(...)):
 async def health_check():
     """API health check."""
     return {"status": "healthy", "service": "InterView AI"}
+
+
+# =============================================================================
+# WebSocket Audio Streaming
+# =============================================================================
+
+@router.websocket("/ws/audio/{session_id}")
+async def websocket_audio(websocket: WebSocket, session_id: str):
+    """
+    WebSocket endpoint for real-time audio streaming and coaching.
+    
+    Receives audio chunks from the frontend, analyzes volume in real-time,
+    and sends coaching feedback back to the client.
+    """
+    await websocket.accept()
+    
+    # Validate session exists
+    if session_id not in sessions:
+        await websocket.close(code=4004, reason="Session not found")
+        return
+    
+    # Create per-connection coach instance
+    coach = AudioCoach()
+    logger.info(f"WebSocket connected for session: {session_id}")
+    
+    try:
+        while True:
+            # Receive audio chunk as bytes (WebM format from browser)
+            data = await websocket.receive_bytes()
+            
+            # Convert to numpy for analysis
+            # Note: audio_bytes_to_numpy uses pydub which can handle WebM with ffmpeg
+            audio_np = audio_bytes_to_numpy(data)
+            
+            if audio_np.size > 0:
+                # Analyze volume in real-time
+                volume_alert = coach.analyze_volume(audio_np)
+                
+                # Calculate RMS for visualization
+                rms = float(np.sqrt(np.mean(audio_np.astype(np.float32) ** 2)))
+                
+                # Send feedback back to UI
+                await websocket.send_json({
+                    "type": "coaching",
+                    "volume_alert": volume_alert,
+                    "volume_level": rms,
+                    "is_speaking": rms > 0.02
+                })
+            else:
+                # Send minimal response for empty/invalid audio
+                await websocket.send_json({
+                    "type": "coaching",
+                    "volume_alert": "OK",
+                    "volume_level": 0.0,
+                    "is_speaking": False
+                })
+                
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for session: {session_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error for session {session_id}: {e}")
+        await websocket.close(code=1011, reason=str(e))
+

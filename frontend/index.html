@@ -115,10 +115,22 @@
             <!-- Answer Section -->
             <div class="answer-section">
                 <h3>💬 Your Answer</h3>
+                
+                <!-- Recording Controls -->
+                <div class="recording-controls">
+                    <button id="record-btn" class="btn btn-record">
+                        🎤 Start Recording
+                    </button>
+                    <div class="volume-meter-container">
+                        <div id="volume-meter" class="volume-meter"></div>
+                    </div>
+                    <span id="recording-status" class="recording-status"></span>
+                </div>
+                
                 <textarea 
                     id="answer-input" 
                     class="input-textarea answer-textarea"
-                    placeholder="Type your answer here... (Voice input coming soon)"
+                    placeholder="Type your answer here or use voice recording above..."
                     rows="5"
                 ></textarea>
                 

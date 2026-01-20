@@ -233,28 +233,43 @@ def audio_bytes_to_numpy(audio_bytes: bytes, sample_rate: int = 16000) -> np.nda
     """
     Convert raw audio bytes to numpy array.
     
+    Supports multiple formats: WAV, WebM, MP3, etc.
+    Requires ffmpeg installed for non-WAV formats.
+    
     Args:
-        audio_bytes: Raw WAV audio bytes
-        sample_rate: Expected sample rate
+        audio_bytes: Raw audio bytes (any format supported by pydub/ffmpeg)
+        sample_rate: Target sample rate for resampling
         
     Returns:
-        Numpy array of float32 audio samples
+        Numpy array of float32 audio samples normalized to [-1, 1]
     """
+    if not audio_bytes or len(audio_bytes) < 100:
+        logger.warning("Audio bytes too small or empty")
+        return np.array([], dtype=np.float32)
+    
     try:
         from pydub import AudioSegment
         import io
         
-        # Load audio from bytes
-        audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format="wav")
+        # Auto-detect format (pydub uses ffmpeg for format detection)
+        # This works with WebM, WAV, MP3, OGG, etc.
+        audio = AudioSegment.from_file(io.BytesIO(audio_bytes))
         
         # Convert to mono if stereo
         if audio.channels > 1:
             audio = audio.set_channels(1)
         
-        # Normalize to -1 to 1 range
+        # Resample to target sample rate if needed
+        if audio.frame_rate != sample_rate:
+            audio = audio.set_frame_rate(sample_rate)
+        
+        # Get raw samples
         samples = np.array(audio.get_array_of_samples())
         
-        # Normalize based on bit depth
+        if samples.size == 0:
+            return np.array([], dtype=np.float32)
+        
+        # Normalize based on bit depth to [-1, 1] range
         max_val = float(2 ** (audio.sample_width * 8 - 1))
         normalized = samples.astype(np.float32) / max_val
         
@@ -263,3 +278,4 @@ def audio_bytes_to_numpy(audio_bytes: bytes, sample_rate: int = 16000) -> np.nda
     except Exception as e:
         logger.error(f"Error converting audio bytes: {e}")
         return np.array([], dtype=np.float32)
+
