@@ -43,6 +43,8 @@ pydantic-settings>=2.0.0    # Settings management
 pytest>=8.0.0               # Testing framework
 pytest-asyncio>=0.23.0      # Async test support
 pytest-cov>=4.1.0           # Coverage reporting
+pre-commit>=3.6.0           # Git hook manager
+ggshield>=1.24.0            # GitGuardian secret scanning
 
 # -----------------------------------------------------------------------------
 # Optional: GPU Acceleration (uncomment if using CUDA)

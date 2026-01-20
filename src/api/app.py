@@ -2,9 +2,12 @@
 InterView AI - FastAPI Application.
 
 Main FastAPI app that serves the API and static frontend files.
+Includes background task for periodic session cleanup.
 """
 
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -13,12 +16,76 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from src.core.config import configure_logging
-from src.api.routes import router as api_router
+from src.api.routes import router as api_router, cleanup_stale_sessions, session_repo
 
 
 # Configure logging
 configure_logging()
 logger = logging.getLogger(__name__)
+
+# Background cleanup task reference
+_cleanup_task: asyncio.Task | None = None
+
+
+async def background_cleanup_task():
+    """
+    Background task to clean up stale sessions periodically.
+    
+    Runs every 30 minutes to:
+    - Remove in-memory sessions older than SESSION_TIMEOUT_HOURS
+    - Clean up persisted session files older than 24 hours
+    """
+    logger.info("🧹 Background cleanup task started")
+    
+    while True:
+        try:
+            # Wait 30 minutes between cleanup runs
+            await asyncio.sleep(30 * 60)
+            
+            # Clean up in-memory stale sessions
+            memory_count = cleanup_stale_sessions()
+            
+            # Clean up old session files from disk
+            disk_count = session_repo.cleanup_old_sessions(max_age_hours=24)
+            
+            if memory_count > 0 or disk_count > 0:
+                logger.info(
+                    f"🧹 Cleanup complete: {memory_count} memory sessions, "
+                    f"{disk_count} disk files removed"
+                )
+                
+        except asyncio.CancelledError:
+            logger.info("🧹 Background cleanup task cancelled")
+            break
+        except Exception as e:
+            logger.error(f"🧹 Cleanup task error: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application lifespan manager.
+    
+    Handles startup and shutdown events:
+    - Startup: Start background cleanup task
+    - Shutdown: Cancel cleanup task gracefully
+    """
+    global _cleanup_task
+    
+    # Startup
+    logger.info("🚀 InterView AI API starting...")
+    _cleanup_task = asyncio.create_task(background_cleanup_task())
+    
+    yield
+    
+    # Shutdown
+    logger.info("👋 InterView AI API shutting down...")
+    if _cleanup_task:
+        _cleanup_task.cancel()
+        try:
+            await _cleanup_task
+        except asyncio.CancelledError:
+            pass
 
 
 def create_app() -> FastAPI:
@@ -30,6 +97,7 @@ def create_app() -> FastAPI:
         version="1.0.0",
         docs_url="/api/docs",
         redoc_url="/api/redoc",
+        lifespan=lifespan,
     )
     
     # CORS middleware for local development
@@ -57,16 +125,9 @@ def create_app() -> FastAPI:
             return FileResponse(str(index_path))
         return {"message": "InterView AI API is running. Frontend not found."}
     
-    @app.on_event("startup")
-    async def startup_event():
-        logger.info("🚀 InterView AI API starting...")
-    
-    @app.on_event("shutdown")
-    async def shutdown_event():
-        logger.info("👋 InterView AI API shutting down...")
-    
     return app
 
 
 # Create app instance
 app = create_app()
+

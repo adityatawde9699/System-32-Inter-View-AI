@@ -233,6 +233,31 @@ InterView-AI/
     └── session_logs/       # Session data (created at runtime)
 ```
 
+## Security
+ 
+This project uses **GitGuardian (ggshield)** to prevent secret leakage.
+ 
+### Local Setup (Pre-commit)
+ 
+1. Install development dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+ 
+2. Install pre-commit hooks:
+   ```bash
+   pre-commit install
+   ```
+ 
+3. (Optional) Run a manual scan:
+   ```bash
+   ggshield secret scan repo .
+   ```
+ 
+### CI/CD
+ 
+A GitHub Action workflow (`.github/workflows/gitguardian.yml`) is configured to automatically scan pushes and pull requests for hardcoded secrets.
+ 
 ## Testing
 
 ```bash

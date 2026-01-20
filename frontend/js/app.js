@@ -62,6 +62,7 @@ const elements = {
 
     // Metrics
     metricWpm: document.getElementById('metric-wpm'),
+    wpmEstimated: document.getElementById('wpm-estimated'),
     metricFillers: document.getElementById('metric-fillers'),
     metricQuestions: document.getElementById('metric-questions'),
     metricScore: document.getElementById('metric-score'),
@@ -264,6 +265,11 @@ async function submitAudioForTranscription(audioBlob) {
         elements.metricWpm.textContent = Math.round(coaching.words_per_minute);
         elements.metricFillers.textContent = coaching.filler_count;
 
+        // Hide estimated badge - audio-based WPM is real measurement
+        if (elements.wpmEstimated) {
+            elements.wpmEstimated.classList.add('hidden');
+        }
+
         // Show coaching alert
         if (coaching.alert_level === 'warning') {
             showAlert(coaching.primary_alert, 'warning');
@@ -445,6 +451,7 @@ async function startSession() {
 
         state.sessionId = response.session_id;
         state.isInterviewActive = true;
+        console.log('🎤 Session started with ID:', state.sessionId);
 
         // Get first question
         await getNextQuestion();
@@ -463,6 +470,8 @@ async function startSession() {
 async function getNextQuestion() {
     showLoading('Generating question...');
     hideAlert();
+
+    console.log('📝 Getting next question for session:', state.sessionId);
 
     try {
         const response = await apiCall(`/question/next?session_id=${state.sessionId}`);
@@ -517,6 +526,11 @@ async function submitAnswer() {
         const coaching = response.coaching;
         elements.metricWpm.textContent = Math.round(coaching.words_per_minute);
         elements.metricFillers.textContent = coaching.filler_count;
+
+        // Show estimated badge - text-based WPM is an estimate
+        if (elements.wpmEstimated) {
+            elements.wpmEstimated.classList.remove('hidden');
+        }
 
         // Show coaching alert
         if (coaching.alert_level === 'warning') {

@@ -24,6 +24,8 @@ from src.api.schemas import (
 from src.app.orchestrator import InterviewOrchestrator
 from src.app.coaching import AudioCoach, audio_bytes_to_numpy
 from src.infra.utils.pdf_parser import extract_from_bytes
+from src.core.domain.models import InterviewExchange
+from src.infra.persistence.repository import SessionRepository
 
 
 logger = logging.getLogger(__name__)
@@ -39,11 +41,44 @@ session_created: Dict[str, datetime] = {}
 
 SESSION_TIMEOUT_HOURS = 2  # Cleanup sessions older than this
 
+# Session persistence repository
+session_repo = SessionRepository()
+
 
 def get_orchestrator(session_id: str) -> InterviewOrchestrator:
-    """Get orchestrator for a specific session."""
+    """
+    Get orchestrator for a specific session.
+    
+    Attempts to restore from disk if not found in memory (handles server restarts).
+    """
+    logger.debug(f"Looking up session: {session_id}, available: {list(sessions.keys())}")
+    
     if session_id not in sessions:
-        raise HTTPException(status_code=404, detail="Session not found")
+        # Try to restore from persisted session
+        persisted_session = session_repo.load(session_id)
+        if persisted_session:
+            logger.info(f"Restoring session {session_id} from disk")
+            orchestrator = InterviewOrchestrator()
+            orchestrator._session = persisted_session
+            
+            # Reconstruct QuestionContext from session data
+            from src.core.domain.models import QuestionContext
+            orchestrator._question_context = QuestionContext(
+                resume_text=persisted_session.resume_text,
+                job_description=persisted_session.job_description,
+            )
+            # Replay previous exchanges to rebuild context
+            for exchange in persisted_session.exchanges:
+                orchestrator._question_context.add_exchange(
+                    exchange.question,
+                    exchange.answer,
+                )
+            
+            sessions[session_id] = orchestrator
+            session_created[session_id] = datetime.now()
+        else:
+            raise HTTPException(status_code=404, detail="Session not found")
+    
     return sessions[session_id]
 
 
@@ -98,6 +133,9 @@ async def start_session(request: StartSessionRequest):
         # Store in sessions dict for multi-user support
         sessions[session_id] = orchestrator
         session_created[session_id] = datetime.now()
+        
+        # Persist session immediately for crash resistance
+        session_repo.save(orchestrator.session)
         
         logger.info(f"Started session {session_id}. Active sessions: {len(sessions)}")
         
@@ -211,12 +249,25 @@ async def submit_answer(request: SubmitAnswerRequest):
             answer=request.answer_text,
         )
         
-        # Update context
+        # Record the exchange in session (CRITICAL: this was missing!)
+        exchange = InterviewExchange(
+            question=orchestrator.session.current_question,
+            answer=request.answer_text,
+            answer_duration_seconds=request.duration_seconds,
+            evaluation=evaluation,
+            coaching_feedback=coaching,
+        )
+        orchestrator.session.add_exchange(exchange)
+        
+        # Update question context for next question generation
         if orchestrator._question_context:
             orchestrator._question_context.add_exchange(
                 orchestrator.session.current_question,
                 request.answer_text,
             )
+        
+        # Persist session to disk for crash resistance
+        session_repo.save(orchestrator.session)
         
         return AnswerResultResponse(
             session_id=request.session_id,
@@ -281,6 +332,9 @@ async def submit_audio_answer(
             audio_bytes=audio_bytes,
             sample_rate=16000,
         )
+        
+        # Persist session to disk for crash resistance
+        session_repo.save(orchestrator.session)
         
         return AnswerResultResponse(
             session_id=session_id,

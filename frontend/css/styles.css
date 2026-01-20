@@ -407,6 +407,16 @@ body::before {
     margin-top: var(--spacing-xs);
 }
 
+.estimated-badge {
+    font-size: 0.65em;
+    color: var(--color-warning);
+    font-weight: 400;
+    margin-left: 0.25em;
+    text-transform: none;
+    letter-spacing: normal;
+    opacity: 0.9;
+}
+
 /* Alert Banner */
 .alert-banner {
     padding: var(--spacing-md);
