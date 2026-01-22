@@ -266,7 +266,9 @@ class InterviewOrchestrator:
             )
             
             # 2. Calculate duration
-            audio_np = audio_bytes_to_numpy(audio_bytes, sample_rate)
+            audio_np = await asyncio.to_thread(
+                audio_bytes_to_numpy, audio_bytes, sample_rate
+            )
             duration = len(audio_np) / sample_rate if audio_np.size > 0 else 0
             
             # 3. Coaching analysis (LOCAL - zero latency, still runs on thread pool for consistency)

@@ -31,7 +31,7 @@ from src.core.domain.models import (
     AnswerEvaluation,
     QuestionContext,
 )
-
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class GeminiInterviewer:
             raise MissingAPIKeyError("GEMINI_API_KEY")
         
         genai.configure(api_key=self._api_key)
-        self._model = genai.GenerativeModel("gemini-2.0-flash")
+        self._model = genai.GenerativeModel("gemini-2.5-flash-lite")
         self._configured = True
         logger.info("✅ Gemini API configured")
     
@@ -143,6 +143,11 @@ class GeminiInterviewer:
         
         return await self._generate(prompt)
      
+    @retry(
+        retry=retry_if_exception_type(LLMRateLimitError),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10)
+    )
     async def _generate(self, prompt: str, temperature: float = 0.7) -> str:
         """Internal method to call Gemini API."""
         try:

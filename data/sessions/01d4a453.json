@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "session_id": "01d4a453",
+  "state": "evaluating",
+  "resume_text": "Mahesh Kirde [Phone Number] | [Email Address] | [LinkedIn Profile/Portfolio] Professional Summary Motivated B.Tech student specializing in Artificial Intelligence with a strong foundation in Python and Web Development. Passionate about building intelligent systems, demonstrated through the development of a personal AI voice assistant and a unified data management engine. Seeking a Summer 2026 internship in Machine Learning to apply technical skills and contribute to innovative AI solutions. Core Competencies Artificial Intelligence | Python Programming | Web Development Flask Framework | Data Visualization | HTML/JavaScript Project Experience Personal AI Voice Assistant (\"Micky\") | Personal Project | [Start Date] \u2013 Present \u2022 Developing a modular AI voice assistant using Python to automate tasks and enhance user interaction. \u2022 Implemented voice recognition and response capabilities, focusing on modular code architecture for easy feature expansion. Unified Data Management Engine (UDME) | System Development Project \u2022 Designed and built a comprehensive data management system using Python and Flask for the backend. \u2022 Developed a dynamic frontend using HTML, JavaScript, and Chart.js to visualize complex data sets effectively. \u2022 Streamlined data handling processes, improving data accessibility and presentation. Education B.Tech in Artificial Intelligence | [University Name] | [Expected Graduation Year] Certifications & Skills \u2022 Technical Skills: Python, Flask, JavaScript, HTML/CSS, Chart.js, Machine Learning Concepts. \u2022 Soft Skills: Problem-solving, Project Management, Continuous Learning. \u2022 [Add any specific certifications here, e.g., \"Certified Python Programmer\" or \"Google AI Essentials\"]",
+  "job_description": "ai engineer job in llms",
+  "current_question": "",
+  "started_at": "2026-01-22T17:35:27.948539",
+  "ended_at": null,
+  "total_questions_asked": 2,
+  "total_filler_words": 0,
+  "average_wpm": 150.11312934807893,
+  "exchanges": [
+    {
+      "question": "",
+      "answer": "One two three one two three mic check I am currently recording this audio to check whether the mic is working or not",
+      "duration_seconds": 7.86,
+      "timestamp": "2026-01-22T17:36:33.498203",
+      "evaluation": {
+        "technical_accuracy": 5,
+        "clarity": 5,
+        "depth": 5,
+        "completeness": 5,
+        "improvement_tip": "Unable to evaluate - please continue.",
+        "positive_note": "Keep going!"
+      },
+      "coaching": {
+        "volume_status": "OK",
+        "pace_status": "\ud83d\udc22 Slow Down! Take a breath between thoughts.",
+        "filler_count": 0,
+        "words_per_minute": 175.57251908396947,
+        "primary_alert": "\ud83d\udc22 Slow Down! Take a breath between thoughts.",
+        "alert_level": "warning"
+      }
+    },
+    {
+      "question": "",
+      "answer": "I am just recording this audio to check whether mic is working. If it is working then I will  say that it is very good working application and currently we are facing API rate limiting  calls issue but I am trying hard to fix it.",
+      "duration_seconds": 21.66,
+      "timestamp": "2026-01-22T17:38:29.660922",
+      "evaluation": {
+        "technical_accuracy": 5,
+        "clarity": 5,
+        "depth": 5,
+        "completeness": 5,
+        "improvement_tip": "Unable to evaluate - please continue.",
+        "positive_note": "Keep going!"
+      },
+      "coaching": {
+        "volume_status": "OK",
+        "pace_status": "OK",
+        "filler_count": 0,
+        "words_per_minute": 124.65373961218837,
+        "primary_alert": "\u2705 Great delivery! Keep it up.",
+        "alert_level": "ok"
+      }
+    }
+  ]
+}

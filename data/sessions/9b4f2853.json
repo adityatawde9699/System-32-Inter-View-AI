@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "session_id": "9b4f2853",
+  "state": "evaluating",
+  "resume_text": "Mahesh Kirde [Phone Number] | [Email Address] | [LinkedIn Profile/Portfolio] Professional Summary Motivated B.Tech student specializing in Artificial Intelligence with a strong foundation in Python and Web Development. Passionate about building intelligent systems, demonstrated through the development of a personal AI voice assistant and a unified data management engine. Seeking a Summer 2026 internship in Machine Learning to apply technical skills and contribute to innovative AI solutions. Core Competencies Artificial Intelligence | Python Programming | Web Development Flask Framework | Data Visualization | HTML/JavaScript Project Experience Personal AI Voice Assistant (\"Micky\") | Personal Project | [Start Date] \u2013 Present \u2022 Developing a modular AI voice assistant using Python to automate tasks and enhance user interaction. \u2022 Implemented voice recognition and response capabilities, focusing on modular code architecture for easy feature expansion. Unified Data Management Engine (UDME) | System Development Project \u2022 Designed and built a comprehensive data management system using Python and Flask for the backend. \u2022 Developed a dynamic frontend using HTML, JavaScript, and Chart.js to visualize complex data sets effectively. \u2022 Streamlined data handling processes, improving data accessibility and presentation. Education B.Tech in Artificial Intelligence | [University Name] | [Expected Graduation Year] Certifications & Skills \u2022 Technical Skills: Python, Flask, JavaScript, HTML/CSS, Chart.js, Machine Learning Concepts. \u2022 Soft Skills: Problem-solving, Project Management, Continuous Learning. \u2022 [Add any specific certifications here, e.g., \"Certified Python Programmer\" or \"Google AI Essentials\"]",
+  "job_description": "Data science analyst engineering position",
+  "current_question": "That's a great start! Regarding your \"Unified Data Management Engine,\" you mentioned developing a dynamic frontend. Can you walk me through your process for choosing and integrating Chart.js for data visualization in that project?",
+  "started_at": "2026-01-22T18:03:53.451936",
+  "ended_at": null,
+  "total_questions_asked": 2,
+  "total_filler_words": 1,
+  "average_wpm": 92.5257538160764,
+  "exchanges": [
+    {
+      "question": "Could you tell me more about the modular architecture you implemented for your Personal AI Voice Assistant, \"Micky,\" and how that design facilitates feature expansion?",
+      "answer": "Mickey is a very intelligent application. I am currently developing it.  It is very good rather than just...  It has a feature of opening, closing and applications and websites.  I currently have a vision to develop it just like Jarvis.",
+      "duration_seconds": 25.74,
+      "timestamp": "2026-01-22T18:05:24.181690",
+      "evaluation": {
+        "technical_accuracy": 3,
+        "clarity": 2,
+        "depth": 1,
+        "completeness": 2,
+        "improvement_tip": "Focus on explaining the specific modular components of the architecture, their responsibilities, and how they interact. For example, instead of saying 'opening applications,' describe a 'process management module' or 'application launcher module' that handles this functionality.",
+        "positive_note": "The candidate expressed enthusiasm for the project and a clear vision for its future development, referencing a well-known AI assistant (Jarvis)."
+      },
+      "coaching": {
+        "volume_status": "OK",
+        "pace_status": "\u23e9 Pick Up Pace! Try to be more concise.",
+        "filler_count": 1,
+        "words_per_minute": 93.24009324009324,
+        "primary_alert": "\u23e9 Pick Up Pace! Try to be more concise.",
+        "alert_level": "warning"
+      }
+    },
+    {
+      "question": "That's a great start! Regarding your \"Unified Data Management Engine,\" you mentioned developing a dynamic frontend. Can you walk me through your process for choosing and integrating Chart.js for data visualization in that project?",
+      "answer": "I am currently developing it as an ML pipeline using PyTorch and Keras.  It is in the developing phase where the data will be inputted and Mickey will be able to visualize the data, describe it, etc.",
+      "duration_seconds": 24.18,
+      "timestamp": "2026-01-22T18:07:24.805061",
+      "evaluation": {
+        "technical_accuracy": 2,
+        "clarity": 3,
+        "depth": 1,
+        "completeness": 1,
+        "improvement_tip": "The candidate should directly address the question about Chart.js. They need to explain how they would integrate a frontend charting library like Chart.js into their ML pipeline, discussing considerations like data formatting, API calls, and rendering the charts in a web interface.",
+        "positive_note": "The candidate has identified relevant technologies (PyTorch, Keras) for building an ML pipeline."
+      },
+      "coaching": {
+        "volume_status": "OK",
+        "pace_status": "\u23e9 Pick Up Pace! Try to be more concise.",
+        "filler_count": 0,
+        "words_per_minute": 91.81141439205956,
+        "primary_alert": "\u23e9 Pick Up Pace! Try to be more concise.",
+        "alert_level": "warning"
+      }
+    }
+  ]
+}

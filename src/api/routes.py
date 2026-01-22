@@ -443,7 +443,8 @@ async def websocket_audio(websocket: WebSocket, session_id: str):
             
             # Convert to numpy for analysis
             # Note: audio_bytes_to_numpy uses pydub which can handle WebM with ffmpeg
-            audio_np = audio_bytes_to_numpy(data)
+            import asyncio
+            audio_np = await asyncio.to_thread(audio_bytes_to_numpy, data)
             
             if audio_np.size > 0:
                 # Analyze volume in real-time
