@@ -10,13 +10,13 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
+from abc import ABC, abstractmethod
 from typing import ClassVar, Optional
 
+from src.core.config import get_settings
 from src.core.exceptions import TTSError
 
-
 logger = logging.getLogger(__name__)
-
 
 # Check for pyttsx3 availability
 try:
@@ -24,16 +24,29 @@ try:
     PYTTSX3_AVAILABLE = True
 except ImportError:
     PYTTSX3_AVAILABLE = False
-    logger.warning("⚠️ pyttsx3 not installed. TTS will be disabled.")
+    logger.warning("⚠️ pyttsx3 not installed. Local TTS will be disabled.")
+
+# Check for elevenlabs availability
+try:
+    from elevenlabs.client import ElevenLabs
+    ELEVENLABS_AVAILABLE = True
+except ImportError:
+    ELEVENLABS_AVAILABLE = False
+    logger.warning("⚠️ elevenlabs not installed. Premium TTS will be disabled.")
 
 
-class TTSEngine:
+class BaseTTSEngine(ABC):
+    """Abstract base class for TTS engines."""
+
+    @abstractmethod
+    def synthesize_to_bytes(self, text: str) -> Optional[bytes]:
+        """Synthesize text to audio bytes."""
+        pass
+
+
+class TTSEngine(BaseTTSEngine):
     """
-    Text-to-Speech engine using pyttsx3.
-    
-    Provides methods to:
-    - Synthesize text to audio bytes (for browser playback)
-    - Speak directly (for local testing)
+    Text-to-Speech engine using pyttsx3 (Local).
     """
     
     _engine: ClassVar[object | None] = None
@@ -59,91 +72,94 @@ class TTSEngine:
                 voice_index = 1 if len(voices) > 1 else 0
                 engine.setProperty('voice', voices[voice_index].id)
             
-            logger.info("✅ TTS engine initialized")
+            logger.info("✅ Local TTS engine initialized")
             
         except Exception as e:
-            logger.error(f"❌ Failed to initialize TTS: {e}")
+            logger.error(f"❌ Failed to initialize Local TTS: {e}")
             TTSEngine._engine = None
     
     def synthesize_to_bytes(self, text: str) -> Optional[bytes]:
-        """
-        Synthesize text to audio bytes.
-        
-        Args:
-            text: Text to synthesize
-            
-        Returns:
-            WAV audio bytes, or None if synthesis fails
-        """
+        """Synthesize text to WAV audio bytes."""
         if not PYTTSX3_AVAILABLE or TTSEngine._engine is None:
-            logger.warning("TTS unavailable, returning None")
             return None
         
         if not text.strip():
             return None
         
-        # Create temp file for audio output
         temp_path = tempfile.mktemp(suffix=".wav")
-        
         try:
+            # Note: pyttsx3 is not thread-safe for synthesis to file usually
+            # But we wrap it in create_orchestrator loops
             engine = TTSEngine._engine
             engine.save_to_file(text, temp_path)
             engine.runAndWait()
             
-            # Read the generated audio
             with open(temp_path, "rb") as f:
-                audio_bytes = f.read()
-            
-            logger.debug(f"Synthesized {len(text)} chars to {len(audio_bytes)} bytes")
-            return audio_bytes
-            
+                return f.read()
         except Exception as e:
-            logger.error(f"TTS synthesis error: {e}")
-            raise TTSError(f"Failed to synthesize speech: {e}")
-            
+            logger.error(f"Local TTS synthesis error: {e}")
+            return None
         finally:
             if os.path.exists(temp_path):
                 os.remove(temp_path)
-    
-    def speak(self, text: str) -> None:
-        """
-        Speak text directly (blocking).
-        
-        Useful for local testing.
-        
-        Args:
-            text: Text to speak
-        """
-        if not PYTTSX3_AVAILABLE or TTSEngine._engine is None:
-            logger.warning("TTS unavailable, cannot speak")
-            return
-        
-        if not text.strip():
-            return
-        
-        try:
-            engine = TTSEngine._engine
-            engine.say(text)
-            engine.runAndWait()
-        except Exception as e:
-            logger.error(f"TTS speak error: {e}")
-    
-    def set_rate(self, words_per_minute: int) -> None:
-        """Set speech rate."""
-        if TTSEngine._engine:
-            TTSEngine._engine.setProperty('rate', words_per_minute)
-    
-    def set_volume(self, volume: float) -> None:
-        """Set speech volume (0.0 to 1.0)."""
-        if TTSEngine._engine:
-            TTSEngine._engine.setProperty('volume', max(0.0, min(1.0, volume)))
-    
-    @classmethod
-    def reset(cls) -> None:
-        """Reset the TTS engine (useful for testing)."""
-        if cls._engine:
+
+
+class ElevenLabsTTSEngine(BaseTTSEngine):
+    """
+    Text-to-Speech engine using ElevenLabs (Cloud).
+    """
+
+    def __init__(self, api_key: str, voice_id: str):
+        self._api_key = api_key
+        self._voice_id = voice_id
+        if ELEVENLABS_AVAILABLE and api_key:
             try:
-                cls._engine.stop()
-            except Exception:
-                pass
-        cls._engine = None
+                self._client = ElevenLabs(api_key=api_key)
+                logger.info("✅ ElevenLabs TTS engine initialized")
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize ElevenLabs TTS: {e}")
+                self._client = None
+        else:
+            self._client = None
+
+    def synthesize_to_bytes(self, text: str) -> Optional[bytes]:
+        """Synthesize text to MP3 audio bytes."""
+        if not self._client or not text.strip():
+            return None
+
+        try:
+            audio_gen = self._client.generate(
+                text=text,
+                voice=self._voice_id,
+                model="eleven_multilingual_v2"
+            )
+            # Collect bytes from generator
+            return b"".join(audio_gen)
+        except Exception as e:
+            logger.error(f"ElevenLabs TTS synthesis error: {e}")
+            return None
+
+
+def get_tts_engine() -> BaseTTSEngine:
+    """
+    Factory function to get the configured TTS engine.
+    
+    Returns ElevenLabs engine if configured and available, 
+    otherwise falls back to local pyttsx3 engine.
+    """
+    settings = get_settings()
+    
+    # Try ElevenLabs first if enabled and key is present
+    if settings.TTS_ENGINE == "elevenlabs" and settings.ELEVENLABS_API_KEY:
+        if ELEVENLABS_AVAILABLE:
+            engine = ElevenLabsTTSEngine(
+                settings.ELEVENLABS_API_KEY, 
+                settings.ELEVENLABS_VOICE_ID
+            )
+            # Test if initialized correctly
+            if engine._client:
+                return engine
+        logger.warning("ElevenLabs requested but unavailable or failed to init. Falling back to local TTS.")
+    
+    # Fallback to local
+    return TTSEngine()

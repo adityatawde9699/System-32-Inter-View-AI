@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     WHISPER_COMPUTE_TYPE: str = "int8"
     
     # -------------------------------------------------------------------------
+    # TTS Configuration
+    # -------------------------------------------------------------------------
+    TTS_ENGINE: Literal["pyttsx3", "elevenlabs"] = "pyttsx3"
+    ELEVENLABS_API_KEY: str = ""
+    ELEVENLABS_VOICE_ID: str = "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
+    
+    # -------------------------------------------------------------------------
     # Audio Coaching Thresholds
     # -------------------------------------------------------------------------
     VOLUME_THRESHOLD: float = 0.02  # RMS threshold for "speak up" alert

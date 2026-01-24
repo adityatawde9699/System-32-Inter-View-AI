@@ -18,6 +18,7 @@
     <!-- Firebase SDK (Compat v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
     <!-- Header -->
@@ -28,7 +29,8 @@
                 <span class="logo-text">InterView AI</span>
             </div>
             <nav class="nav">
-                <a href="#" class="nav-link active">Interview</a>
+                <a href="#" id="nav-interview" class="nav-link active">Interview</a>
+                <a href="#" id="nav-history" class="nav-link">History</a>
                 <a href="/api/docs" class="nav-link" target="_blank">API Docs</a>
                 <button id="logout-btn" class="btn-logout hidden">
                     <span class="logout-icon">🚪</span> Logout
@@ -241,6 +243,29 @@
             <button id="restart-btn" class="btn btn-primary btn-large">
                 🔄 Start New Interview
             </button>
+        </section>
+
+        <!-- History Panel (Past Sessions) -->
+        <section id="history-panel" class="panel history-panel hidden">
+            <div class="panel-header">
+                <h2>📜 Interview History</h2>
+                <p class="subtitle">Review your past performance and growth</p>
+            </div>
+            
+            <div id="history-list" class="history-list">
+                <!-- History cards will be injected here -->
+                <div class="loading-placeholder">
+                    <div class="spinner-small"></div>
+                    <p>Loading your history...</p>
+                </div>
+            </div>
+            
+            <div id="history-empty" class="history-empty hidden">
+                <div class="empty-icon">📭</div>
+                <h3>No history found</h3>
+                <p>Complete your first interview to see your reports here!</p>
+                <button id="history-start-btn" class="btn btn-primary">Start Now</button>
+            </div>
         </section>
         
     </main>

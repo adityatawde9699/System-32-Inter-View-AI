@@ -34,7 +34,7 @@ from src.core.exceptions import (
 )
 from src.infra.llm.gemini import GeminiInterviewer
 from src.infra.speech.stt import WhisperSTT, get_audio_duration
-from src.infra.speech.tts import TTSEngine
+from src.infra.speech.tts import BaseTTSEngine, get_tts_engine
 from src.app.coaching import AudioCoach, audio_bytes_to_numpy
 
 
@@ -68,7 +68,7 @@ class InterviewOrchestrator:
         self,
         gemini: GeminiInterviewer | None = None,
         stt: WhisperSTT | None = None,
-        tts: TTSEngine | None = None,
+        tts: BaseTTSEngine | None = None,
         coach: AudioCoach | None = None,
     ):
         """
@@ -85,7 +85,7 @@ class InterviewOrchestrator:
         # Initialize components
         self._gemini = gemini or GeminiInterviewer()
         self._stt = stt or WhisperSTT()
-        self._tts = tts or TTSEngine()
+        self._tts = tts or get_tts_engine()
         self._coach = coach or AudioCoach()
         
         # Session state
@@ -385,6 +385,6 @@ def create_orchestrator() -> InterviewOrchestrator:
     return InterviewOrchestrator(
         gemini=GeminiInterviewer(),
         stt=WhisperSTT(),
-        tts=TTSEngine(),
+        tts=get_tts_engine(),
         coach=AudioCoach(),
     )

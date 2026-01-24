@@ -42,6 +42,11 @@ const elements = {
     setupPanel: document.getElementById('setup-panel'),
     interviewPanel: document.getElementById('interview-panel'),
     summaryPanel: document.getElementById('summary-panel'),
+    historyPanel: document.getElementById('history-panel'),
+
+    // Nav
+    navInterview: document.getElementById('nav-interview'),
+    navHistory: document.getElementById('nav-history'),
 
     // Setup
     resumeDropzone: document.getElementById('resume-dropzone'),
@@ -91,6 +96,11 @@ const elements = {
     // Loading
     loadingOverlay: document.getElementById('loading-overlay'),
     loadingText: document.getElementById('loading-text'),
+
+    // History
+    historyList: document.getElementById('history-list'),
+    historyEmpty: document.getElementById('history-empty'),
+    historyStartBtn: document.getElementById('history-start-btn'),
 };
 
 // =============================================================================
@@ -110,6 +120,20 @@ function showPanel(panel) {
     elements.setupPanel.classList.add('hidden');
     elements.interviewPanel.classList.add('hidden');
     elements.summaryPanel.classList.add('hidden');
+    elements.historyPanel.classList.add('hidden');
+
+    // Update Nav Active State
+    if (elements.navInterview) elements.navInterview.classList.remove('active');
+    if (elements.navHistory) elements.navHistory.classList.remove('active');
+
+    if (panel === elements.historyPanel) {
+        if (elements.navHistory) elements.navHistory.classList.add('active');
+    } else if (panel !== elements.setupPanel && panel !== elements.interviewPanel && panel !== elements.summaryPanel) {
+        // Generic fallback or custom logic
+    } else {
+        if (elements.navInterview) elements.navInterview.classList.add('active');
+    }
+
     panel.classList.remove('hidden');
 }
 
@@ -591,12 +615,134 @@ async function endSession() {
         state.isInterviewActive = false;
         showPanel(elements.summaryPanel);
 
+        // Save report to Firebase Firestore
+        await saveInterviewReport(response);
+
     } catch (error) {
         console.error('End session error:', error);
         alert(`Failed to end session: ${error.message}`);
     } finally {
         hideLoading();
     }
+}
+
+async function saveInterviewReport(summaryData) {
+    const user = firebase.auth().currentUser;
+    if (!user) {
+        console.warn('⚠️ No user logged in. Report not saved to Firebase.');
+        return;
+    }
+
+    try {
+        console.log('📤 Saving interview report to Firestore...');
+
+        const reportData = {
+            userId: user.uid,
+            userEmail: user.email,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            sessionId: state.sessionId,
+            metrics: {
+                durationMinutes: summaryData.duration_minutes,
+                questionsAsked: summaryData.questions_asked,
+                averageScore: summaryData.average_score,
+                averageWpm: summaryData.average_wpm,
+                totalFillers: summaryData.total_fillers
+            },
+            jobDescription: elements.jobDescription.value.trim(),
+        };
+
+        if (state.resumeText) {
+            reportData.resumeSnippet = state.resumeText.substring(0, 500);
+        }
+
+        await db.collection('reports').add(reportData);
+        console.log('✅ Interview report successfully saved to Firestore');
+
+    } catch (error) {
+        console.error('❌ Error saving report to Firestore:', error);
+    }
+}
+
+async function loadInterviewHistory() {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    elements.historyList.innerHTML = `
+        <div class="loading-placeholder">
+            <div class="spinner-small"></div>
+            <p>Loading your history...</p>
+        </div>
+    `;
+    elements.historyEmpty.classList.add('hidden');
+    elements.historyList.classList.remove('hidden');
+
+    try {
+        const snapshot = await db.collection('reports')
+            .where('userId', '==', user.uid)
+            .orderBy('timestamp', 'desc')
+            .limit(20)
+            .get();
+
+        if (snapshot.empty) {
+            elements.historyList.classList.add('hidden');
+            elements.historyEmpty.classList.remove('hidden');
+            return;
+        }
+
+        const reports = [];
+        snapshot.forEach(doc => {
+            reports.push({ id: doc.id, ...doc.data() });
+        });
+
+        renderHistoryList(reports);
+
+    } catch (error) {
+        console.error('Error loading history:', error);
+        elements.historyList.innerHTML = `<p class="error">Failed to load history: ${error.message}</p>`;
+    }
+}
+
+function renderHistoryList(reports) {
+    elements.historyList.innerHTML = '';
+
+    reports.forEach(report => {
+        const date = report.timestamp ? report.timestamp.toDate() : new Date();
+        const day = date.getDate();
+        const month = date.toLocaleString('default', { month: 'short' });
+
+        const card = document.createElement('div');
+        card.className = 'history-card';
+        card.innerHTML = `
+            <div class="history-date">
+                <span class="date-day">${day}</span>
+                <span class="date-month">${month}</span>
+            </div>
+            <div class="history-info">
+                <div class="history-title">Interview Session</div>
+                <div class="history-meta">
+                    <span class="history-meta-item">⏱️ ${report.metrics.durationMinutes.toFixed(1)}m</span>
+                    <span class="history-meta-item">❓ ${report.metrics.questionsAsked} Questions</span>
+                </div>
+            </div>
+            <div class="history-score">
+                <div class="score-value">${report.metrics.averageScore.toFixed(1)}</div>
+                <div class="score-label">Avg Score</div>
+            </div>
+        `;
+
+        // Add click listener to show summary (re-using existing summary UI)
+        card.addEventListener('click', () => {
+            elements.summaryDuration.textContent = report.metrics.durationMinutes.toFixed(1);
+            elements.summaryQuestions.textContent = report.metrics.questionsAsked;
+            elements.summaryScore.textContent = report.metrics.averageScore.toFixed(1);
+            elements.summaryWpm.textContent = Math.round(report.metrics.averageWpm);
+            elements.summaryFillers.textContent = report.metrics.totalFillers;
+
+            showPanel(elements.summaryPanel);
+        });
+
+        elements.historyList.appendChild(card);
+    });
 }
 
 function restartInterview() {
@@ -649,6 +795,34 @@ function setupEventListeners() {
 
     // Summary panel
     elements.restartBtn.addEventListener('click', restartInterview);
+
+    // Navigation
+    if (elements.navInterview) {
+        elements.navInterview.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (state.isInterviewActive) {
+                showPanel(elements.interviewPanel);
+            } else if (state.sessionId && !elements.summaryPanel.classList.contains('hidden')) {
+                showPanel(elements.summaryPanel);
+            } else {
+                showPanel(elements.setupPanel);
+            }
+        });
+    }
+
+    if (elements.navHistory) {
+        elements.navHistory.addEventListener('click', (e) => {
+            e.preventDefault();
+            loadInterviewHistory();
+            showPanel(elements.historyPanel);
+        });
+    }
+
+    if (elements.historyStartBtn) {
+        elements.historyStartBtn.addEventListener('click', () => {
+            showPanel(elements.setupPanel);
+        });
+    }
 }
 
 // =============================================================================

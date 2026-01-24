@@ -14,6 +14,7 @@ const firebaseConfig = {
 // 2. Initialize Firebase (Compat syntax)
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+const db = firebase.firestore();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 // 3. UI References
@@ -31,7 +32,13 @@ if (loginBtn) {
         firebase.auth().signInWithPopup(googleProvider)
             .catch((error) => {
                 console.error("Login failed:", error);
-                loginError.textContent = "Login failed: " + error.message;
+
+                let message = "Login failed: " + error.message;
+                if (error.code === 'auth/network-request-failed') {
+                    message = "Login failed: Network error. Please ensure '127.0.0.1' is added to 'Authorized Domains' in your Firebase Console (Authentication > Settings).";
+                }
+
+                loginError.textContent = message;
                 loginError.classList.remove('hidden');
             });
     });
