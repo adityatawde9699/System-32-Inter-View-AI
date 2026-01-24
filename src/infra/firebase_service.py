@@ -5,7 +5,9 @@ Handles interaction with Firebase Admin SDK, specifically for
 triggering emails via the 'Trigger Email from Firestore' extension.
 """
 
+import json
 import logging
+import os
 from typing import Any, Dict, Optional
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -30,13 +32,37 @@ class FirebaseService:
         try:
             # Check if already initialized to avoid errors
             if not firebase_admin._apps:
-                if settings.FIREBASE_CREDENTIALS_PATH:
-                    cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
+                cred = None
+                
+                # Try 1: Load from environment variable (FIREBASE_SERVICE_ACCOUNT_JSON)
+                firebase_json_env = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+                if firebase_json_env:
+                    try:
+                        cred_dict = json.loads(firebase_json_env)
+                        cred = credentials.Certificate(cred_dict)
+                        logger.info("✅ Firebase credentials loaded from FIREBASE_SERVICE_ACCOUNT_JSON environment variable")
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"⚠️ Invalid JSON in FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
+                
+                # Try 2: Load from file path (backward compatibility)
+                if not cred and settings.FIREBASE_CREDENTIALS_PATH:
+                    try:
+                        if os.path.exists(settings.FIREBASE_CREDENTIALS_PATH):
+                            cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
+                            logger.info(f"✅ Firebase credentials loaded from file: {settings.FIREBASE_CREDENTIALS_PATH}")
+                        else:
+                            logger.warning(f"⚠️ Firebase credentials file not found: {settings.FIREBASE_CREDENTIALS_PATH}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Failed to load Firebase credentials from file: {e}")
+                
+                # Initialize if credentials available
+                if cred:
                     firebase_admin.initialize_app(cred)
                     self._db = firestore.client()
                     logger.info("✅ Firebase Admin initialized successfully")
                 else:
-                    logger.warning("⚠️ FIREBASE_CREDENTIALS_PATH not set. Email features disabled.")
+                    logger.warning("⚠️ Firebase credentials not found. Email features disabled. Set FIREBASE_SERVICE_ACCOUNT_JSON environment variable.")
+                    self._db = None
             else:
                 self._db = firestore.client()
         except Exception as e:
