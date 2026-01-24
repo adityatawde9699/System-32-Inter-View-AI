@@ -39,6 +39,10 @@ def run_server(host: str = None, port: int = None):
     """Launch the FastAPI server with uvicorn."""
     import uvicorn
     import os
+    from src.core.config import configure_logging
+    
+    # Configure logging before starting server
+    configure_logging()
     
     # Support Railway and other cloud platforms
     if host is None:

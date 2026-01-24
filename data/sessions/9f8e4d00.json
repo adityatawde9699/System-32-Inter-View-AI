@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "session_id": "9f8e4d00",
+  "state": "evaluating",
+  "resume_text": "MAHESH KIRDE Maharashtra, India Email: kirdemahesh@email.com | Mobile:7822884694 LinkedIn / GitHub: CAREER OBJECTIVE Passionate Artificial Intelligence & Data Science student with strong interest in AI, Data Analysis, and Web Development. Seeking opportunities to apply technical skills, learn industry practices, and contribute to real-world projects while growing as a professional. EDUCATION B.Tech in Artificial Intelligence & Data Science Jawaharlal Nehru Engineering college , Maharashtra (Expected Graduation: 2026) TECHNICAL SKILLS \u2022 Programming: C, Python, JavaScript \u2022 Web: HTML, CSS, ReactJS, Node.js \u2022 Database: MongoDB, MySQL \u2022 Tools: Git, VS Code, PowerPoint \u2022 Basics of Machine Learning & Data Analysis PROJECTS \u2022 AgMarket Watch \u2013 App providing live seed & pulse prices for districts in Maharashtra \u2022 React-based Portfolio Website with modern UI/UX and responsive design \u2022 Free Fire Tournament Website with registration system CERTIFICATIONS / LEARNING \u2022 AI & Data Science fundamentals \u2022 Web Development (Frontend & MERN basics) \u2022 Self-learning through projects & online platforms STRENGTHS \u2022 Quick learner & problem solver \u2022 Creative thinker with UI/UX sense \u2022 Good communication & teamwork skills DECLARATION I hereby declare that the above information is true to the best of my knowledge.",
+  "job_description": "artificial intelligence engineer",
+  "current_question": "",
+  "started_at": "2026-01-24T23:38:51.408933",
+  "ended_at": null,
+  "total_questions_asked": 2,
+  "total_filler_words": 0,
+  "average_wpm": 108.51025222282708,
+  "exchanges": [
+    {
+      "question": "",
+      "answer": "I hope we can just record this audio.",
+      "duration_seconds": 3.96,
+      "timestamp": "2026-01-24T23:42:35.959050",
+      "evaluation": {
+        "technical_accuracy": 5,
+        "clarity": 5,
+        "depth": 5,
+        "completeness": 5,
+        "improvement_tip": "Unable to evaluate - please continue.",
+        "positive_note": "Keep going!"
+      },
+      "coaching": {
+        "volume_status": "\ud83d\udce3 Speak Up! Your voice is a bit quiet.",
+        "pace_status": "OK",
+        "filler_count": 0,
+        "words_per_minute": 121.21212121212122,
+        "primary_alert": "\ud83d\udce3 Speak Up! Your voice is a bit quiet.",
+        "alert_level": "warning"
+      }
+    },
+    {
+      "question": "",
+      "answer": "I am just recording this audio to just check whether the mic is working or not.",
+      "duration_seconds": 10.02,
+      "timestamp": "2026-01-24T23:44:28.385507",
+      "evaluation": {
+        "technical_accuracy": 5,
+        "clarity": 5,
+        "depth": 5,
+        "completeness": 5,
+        "improvement_tip": "Unable to evaluate - please continue.",
+        "positive_note": "Keep going!"
+      },
+      "coaching": {
+        "volume_status": "OK",
+        "pace_status": "\u23e9 Pick Up Pace! Try to be more concise.",
+        "filler_count": 0,
+        "words_per_minute": 95.80838323353294,
+        "primary_alert": "\u23e9 Pick Up Pace! Try to be more concise.",
+        "alert_level": "warning"
+      }
+    }
+  ]
+}

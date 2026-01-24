@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # API Keys
     # -------------------------------------------------------------------------
     GEMINI_API_KEY: str = ""
-    GEMINI_MODEL: str = "gemini-2.0-flash"  # Latest Gemini model
+    GEMINI_MODEL: str = "gemini-2.0-flash-lite"  # Latest Gemini model
     
     # -------------------------------------------------------------------------
     # Firebase Configuration
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     FIREBASE_MEASUREMENT_ID: str = ""
     
     # Path to your Firebase Admin SDK service account JSON file
-    FIREBASE_CREDENTIALS_PATH: str = "firebase_credentials.json"
+    FIREBASE_CREDENTIALS_PATH: str = "serviceAccountKey.json"
     
     # -------------------------------------------------------------------------
     # Whisper STT Configuration

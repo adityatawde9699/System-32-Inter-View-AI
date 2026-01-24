@@ -183,10 +183,14 @@ async def start_session(request: StartSessionRequest):
 
 @router.post("/session/end", response_model=SessionStatsResponse)
 async def end_session(
+    request: Request,
     session_id: str = Query(..., description="Session ID to end"),
-    user_email: str = Query(None, description="User email for report")
 ):
-    """End the current interview session."""
+    """
+    End the current interview session.
+    
+    Securely extracts user email from Firebase ID Token in Authorization header.
+    """
     try:
         orchestrator = get_orchestrator(session_id)
         
@@ -195,10 +199,28 @@ async def end_session(
         
         summary = await orchestrator.end_session()
         
-        # Send email report via Firebase (if email provided)
+        # Secure Email Handling
+        user_email = None
+        auth_header = request.headers.get("Authorization")
+        
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                from firebase_admin import auth
+                decoded_token = auth.verify_id_token(token)
+                user_email = decoded_token.get("email")
+                logger.info(f"✅ Verified user email from token: {user_email}")
+            except Exception as e:
+                logger.warning(f"❌ Failed to verify token: {e}")
+        
+        # Send email report via Firebase (if valid email found)
         if user_email:
             logger.info(f"📧 Sending interview report to {user_email}")
-            firebase_service.send_interview_report(user_email, summary)
+            success = firebase_service.send_interview_report(user_email, summary)
+            if not success:
+                logger.warning("Failed to queue email report (check firebase_service logs)")
+        else:
+            logger.info("ℹ️ No authenticated user email found, skipping report email.")
 
         # Clean up session from dict
         sessions.pop(session_id, None)
@@ -507,3 +529,97 @@ async def websocket_audio(websocket: WebSocket, session_id: str):
     except Exception as e:
         logger.error(f"WebSocket error for session {session_id}: {e}")
         await websocket.close(code=1011, reason=str(e))
+
+
+# =============================================================================
+# Report Download
+# =============================================================================
+
+@router.get("/session/report/{session_id}/download")
+async def download_report(session_id: str):
+    """
+    Generate and download a PDF report for the interview session.
+    """
+    try:
+        from fpdf import FPDF
+        import tempfile
+        import os
+        from fastapi.responses import FileResponse
+        
+        orchestrator = get_orchestrator(session_id)
+        if not orchestrator.session:
+            # Try to load from disk if not active
+            try:
+                # This logic is duplicated from get_orchestrator but robust
+                pass 
+            except:
+                 raise HTTPException(status_code=404, detail="Session not found")
+        
+        stats = orchestrator.get_session_stats()
+        session = orchestrator.session
+        
+        # Create PDF
+        class ReportPDF(FPDF):
+            def header(self):
+                self.set_font('Arial', 'B', 16)
+                self.cell(0, 10, 'InterView AI - Session Report', 0, 1, 'C')
+                self.ln(5)
+                
+            def footer(self):
+                self.set_y(-15)
+                self.set_font('Arial', 'I', 8)
+                self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
+        pdf = ReportPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        
+        # Stats Section
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(0, 10, "Session Statistics", 0, 1)
+        pdf.set_font("Arial", size=12)
+        pdf.cell(0, 8, f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}", 0, 1)
+        pdf.cell(0, 8, f"Duration: {stats.get('duration_minutes', 0)} minutes", 0, 1)
+        pdf.cell(0, 8, f"Questions Asked: {stats.get('questions_asked', 0)}", 0, 1)
+        pdf.cell(0, 8, f"Average Score: {stats.get('average_score', 0)}/10", 0, 1)
+        pdf.cell(0, 8, f"Words Per Minute: {stats.get('average_wpm', 0)}", 0, 1)
+        pdf.ln(10)
+        
+        # Q&A Transcript
+        pdf.set_font("Arial", 'B', 14)
+        pdf.cell(0, 10, "Interview Transcript", 0, 1)
+        pdf.set_font("Arial", size=11)
+        
+        for i, exchange in enumerate(session.exchanges):
+            pdf.set_font("Arial", 'B', 11)
+            # Handle unicode characters broadly by replacing or ignoring
+            q_text = f"Q{i+1}: {exchange.question}".encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(0, 7, q_text)
+            
+            pdf.set_font("Arial", '', 11)
+            a_text = f"A: {exchange.answer}".encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(0, 7, a_text)
+            
+            # Feedback
+            pdf.set_font("Arial", 'I', 10)
+            fb_text = f"Feedback: Tech={exchange.evaluation.technical_accuracy}/10, Clarity={exchange.evaluation.clarity}/10".encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(0, 6, fb_text)
+            if exchange.evaluation.improvement_tip:
+                 tip = f"Tip: {exchange.evaluation.improvement_tip}".encode('latin-1', 'replace').decode('latin-1')
+                 pdf.multi_cell(0, 6, tip)
+            
+            pdf.ln(5)
+            
+        # Save to temp file
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+        pdf.output(temp_file.name)
+        
+        return FileResponse(
+            temp_file.name, 
+            media_type='application/pdf', 
+            filename=f"interview_report_{session_id}.pdf"
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to generate PDF: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

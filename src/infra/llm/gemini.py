@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 
-import google.genai as genai
+from google import genai
+from google.genai import types
 
 from src.core.config import get_settings
 from src.core.exceptions import (
@@ -50,34 +50,22 @@ class GeminiInterviewer:
     def __init__(self, api_key: str | None = None):
         self._settings = get_settings()
         self._api_key = api_key or self._settings.GEMINI_API_KEY
-        self._model = None
-        self._configured = False
-    
-    def _configure(self) -> None:
-        """Configure the Gemini API client (lazy initialization)."""
-        if self._configured:
-            return
         
         if not self._api_key:
             raise MissingAPIKeyError("GEMINI_API_KEY")
         
-        genai.configure(api_key=self._api_key)
-        self._model = genai.GenerativeModel("gemini-2.5-flash-lite")
-        self._configured = True
-        logger.info("✅ Gemini API configured")
+        # Initialize client with API key (new SDK pattern)
+        self.client = genai.Client(api_key=self._api_key)
+        self._model_id = self._settings.GEMINI_MODEL
+        logger.info(f"✅ Gemini API client initialized (model: {self._model_id})")
     
     async def generate_opening_question(self, context: QuestionContext) -> str:
         """Generate the first interview question based on resume."""
-        self._configure()
-        
         prompt = OPENING_QUESTION.format(resume_text=context.resume_text)
-        
         return await self._generate(prompt)
     
     async def generate_question(self, context: QuestionContext) -> str:
         """Generate the next interview question."""
-        self._configure()
-        
         # Format previous questions for context
         prev_q_text = "\n".join(
             f"- {q}" for q in context.previous_questions
@@ -93,10 +81,7 @@ class GeminiInterviewer:
     
     async def generate_follow_up(self, answer: str) -> str:
         """Generate a follow-up question based on the candidate's answer."""
-        self._configure()
-        
         prompt = FOLLOW_UP_PROMPT.format(answer=answer)
-        
         return await self._generate(prompt)
     
     async def evaluate_answer(
@@ -105,13 +90,43 @@ class GeminiInterviewer:
         answer: str,
     ) -> AnswerEvaluation:
         """Evaluate the candidate's answer and return structured feedback."""
-        self._configure()
-        
         prompt = FEEDBACK_PERSONA.format(question=question, answer=answer)
         
         try:
-            response = await self._generate(prompt)
-            return self._parse_evaluation(response)
+            # Use structured output with response schema
+            response = self.client.models.generate_content(
+                model=self._model_id,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.5,
+                    response_mime_type="application/json",
+                    response_schema={
+                        "type": "object",
+                        "properties": {
+                            "technical_accuracy": {"type": "integer"},
+                            "clarity": {"type": "integer"},
+                            "depth": {"type": "integer"},
+                            "completeness": {"type": "integer"},
+                            "improvement_tip": {"type": "string"},
+                            "positive_note": {"type": "string"},
+                        },
+                        "required": [
+                            "technical_accuracy", "clarity", "depth", 
+                            "completeness", "improvement_tip", "positive_note"
+                        ],
+                    },
+                ),
+            )
+            
+            data = json.loads(response.text)
+            return AnswerEvaluation(
+                technical_accuracy=int(data.get("technical_accuracy", 5)),
+                clarity=int(data.get("clarity", 5)),
+                depth=int(data.get("depth", 5)),
+                completeness=int(data.get("completeness", 5)),
+                improvement_tip=data.get("improvement_tip", ""),
+                positive_note=data.get("positive_note", ""),
+            )
         except Exception as e:
             logger.warning(f"Failed to parse evaluation: {e}")
             return AnswerEvaluation(
@@ -129,8 +144,6 @@ class GeminiInterviewer:
         evaluations: list[AnswerEvaluation],
     ) -> str:
         """Generate the final interview summary."""
-        self._configure()
-        
         eval_text = "\n".join(
             f"Q{i+1}: Tech={e.technical_accuracy}, Clarity={e.clarity}"
             for i, e in enumerate(evaluations)
@@ -151,14 +164,13 @@ class GeminiInterviewer:
     async def _generate(self, prompt: str, temperature: float = 0.7) -> str:
         """Internal method to call Gemini API."""
         try:
-            generation_config = genai.GenerationConfig(
-                temperature=temperature,
-                max_output_tokens=1024,
-            )
-            
-            response = self._model.generate_content(
-                prompt,
-                generation_config=generation_config,
+            response = self.client.models.generate_content(
+                model=self._model_id,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=temperature,
+                    max_output_tokens=1024,
+                ),
             )
             
             if not response.text:
@@ -166,33 +178,11 @@ class GeminiInterviewer:
             
             return response.text.strip()
             
-        except genai.types.BlockedPromptException as e:
-            logger.warning(f"Prompt blocked: {e}")
-            raise LLMResponseError("Content was blocked by safety filters")
         except Exception as e:
             error_str = str(e).lower()
-            if "429" in error_str or "rate" in error_str:
+            if "429" in error_str or "rate" in error_str or "quota" in error_str:
                 raise LLMRateLimitError("Gemini", retry_after=60)
             if "connection" in error_str or "network" in error_str:
                 raise LLMConnectionError("Gemini", str(e))
             logger.error(f"Gemini error: {e}")
             raise LLMResponseError(str(e))
-    
-    def _parse_evaluation(self, response: str) -> AnswerEvaluation:
-        """Parse JSON evaluation response from Gemini."""
-        # Try to extract JSON from the response
-        json_match = re.search(r'\{[^{}]+\}', response, re.DOTALL)
-        
-        if not json_match:
-            raise ValueError("No JSON found in response")
-        
-        data = json.loads(json_match.group())
-        
-        return AnswerEvaluation(
-            technical_accuracy=int(data.get("technical_accuracy", 5)),
-            clarity=int(data.get("clarity", 5)),
-            depth=int(data.get("depth", 5)),
-            completeness=int(data.get("completeness", 5)),
-            improvement_tip=data.get("improvement_tip", ""),
-            positive_note=data.get("positive_note", ""),
-        )

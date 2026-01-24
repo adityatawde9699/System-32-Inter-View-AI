@@ -85,6 +85,7 @@ const elements = {
     summaryScore: document.getElementById('summary-score'),
     summaryWpm: document.getElementById('summary-wpm'),
     summaryFillers: document.getElementById('summary-fillers'),
+    downloadBtn: document.getElementById('download-btn'),
     restartBtn: document.getElementById('restart-btn'),
 
     // Audio Recording
@@ -593,43 +594,53 @@ async function submitAnswer() {
 }
 
 async function endSession() {
-    // 1. Ask the user for their email using a browser prompt
-    const userEmail = prompt("Please enter your email address to receive the interview report:");
-
-    // 2. If the user clicks "Cancel" (returns null), stop the process
-    if (userEmail === null) {
-        return; 
-    }
-
-    // 3. Basic validation to ensure they didn't leave it empty
-    if (!userEmail.trim() || !userEmail.includes('@')) {
-        alert("Please enter a valid email address to end the session.");
-        return;
-    }
-
-    showLoading('Generating summary...');
+    showLoading('Ending session...');
 
     try {
-        // 4. Pass the user's input email to the API
-        const response = await apiCall(`/session/end?session_id=${state.sessionId}&user_email=${encodeURIComponent(userEmail)}`, {
+        // Securely get the current user's token
+        const user = firebase.auth().currentUser;
+        let headers = {
+            'Content-Type': 'application/json'
+        };
+
+        if (user) {
+            const token = await user.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+            console.log('🔐 Sending request with Auth Token');
+        } else {
+            console.log('⚠️ No user logged in (Guest Mode)');
+        }
+
+        // Send request to end session
+        const response = await fetch(`${API_BASE}/session/end?session_id=${state.sessionId}`, {
             method: 'POST',
+            headers: headers
         });
 
-        // 5. Update UI with Summary
-        elements.summaryDuration.textContent = response.duration_minutes.toFixed(1);
-        elements.summaryQuestions.textContent = response.questions_asked;
-        elements.summaryScore.textContent = response.average_score.toFixed(1);
-        elements.summaryWpm.textContent = Math.round(response.average_wpm);
-        elements.summaryFillers.textContent = response.total_fillers;
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to end session');
+        }
+
+        const data = await response.json();
+
+        // Update UI with Summary
+        elements.summaryDuration.textContent = data.duration_minutes.toFixed(1);
+        elements.summaryQuestions.textContent = data.questions_asked;
+        elements.summaryScore.textContent = data.average_score.toFixed(1);
+        elements.summaryWpm.textContent = Math.round(data.average_wpm);
+        elements.summaryFillers.textContent = data.total_fillers;
 
         state.isInterviewActive = false;
         showPanel(elements.summaryPanel);
-        
-        // 6. Confirm sent
-        alert(`Interview ended! The report has been sent to ${userEmail}`);
 
-        // Save report to Firebase Firestore
-        await saveInterviewReport(response);
+        let msg = 'Interview ended!';
+        if (user) {
+            msg += ` Report sent to ${user.email}`;
+            // Also save to Firestore for history
+            await saveInterviewReport(data);
+        }
+        showAlert(msg, 'ok');
 
     } catch (error) {
         console.error('End session error:', error);
@@ -637,6 +648,12 @@ async function endSession() {
     } finally {
         hideLoading();
     }
+}
+
+function downloadReport() {
+    if (!state.sessionId) return;
+    // Direct link trigger for file download
+    window.location.href = `${API_BASE}/session/report/${state.sessionId}/download`;
 }
 
 async function saveInterviewReport(summaryData) {
@@ -793,6 +810,9 @@ function setupEventListeners() {
     elements.submitAnswerBtn.addEventListener('click', submitAnswer);
     elements.nextQuestionBtn.addEventListener('click', getNextQuestion);
     elements.endSessionBtn.addEventListener('click', endSession);
+    if (elements.downloadBtn) {
+        elements.downloadBtn.addEventListener('click', downloadReport);
+    }
 
     // Allow Ctrl+Enter to submit answer
     elements.answerInput.addEventListener('keydown', (e) => {

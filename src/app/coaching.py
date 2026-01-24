@@ -277,7 +277,12 @@ def audio_bytes_to_numpy(audio_bytes: bytes, sample_rate: int = 16000) -> np.nda
         
         return normalized
         
+        return normalized
+        
     except Exception as e:
-        logger.error(f"Error converting audio bytes: {e}")
+        # For small chunks (streaming), decoding failures are expected and verbose
+        # Only log as warning/debug to prevent console spam
+        if len(audio_bytes) > 5000:
+             logger.warning(f"Error converting audio bytes: {e}")
         return np.array([], dtype=np.float32)
 

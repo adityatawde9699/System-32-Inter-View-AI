@@ -42,6 +42,8 @@ sys32_venv/
 .env
 .env.local
 .env.*.local
+serviceAccountKey.json
+firebase_credentials.json
 
 # Data
 data/resumes/*
