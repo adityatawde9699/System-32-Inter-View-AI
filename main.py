@@ -179,10 +179,8 @@ def main():
         os.environ["LOG_LEVEL"] = "DEBUG"
     
     # Run
-    if args.cli:
-        asyncio.run(run_cli_demo())
-    else:
-        run_server(host=args.host, port=args.port)
+    
+    run_server(host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

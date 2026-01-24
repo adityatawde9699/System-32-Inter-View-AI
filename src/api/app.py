@@ -18,21 +18,6 @@ from fastapi.responses import FileResponse
 from src.core.config import configure_logging
 from src.api.routes import router as api_router, cleanup_stale_sessions, session_repo
 
-from src.infra.speech.stt import WhisperSTT
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("🚀 InterView AI API starting...")
-    
-    # Pre-load the model to RAM/VRAM during startup
-    # This ensures the download happens before the server accepts traffic
-    logger.info("⏳ Pre-loading Whisper model...")
-    WhisperSTT() 
-    
-    _cleanup_task = asyncio.create_task(background_cleanup_task())
-    yield
-
-
 # Configure logging
 configure_logging()
 logger = logging.getLogger(__name__)
@@ -81,7 +66,7 @@ async def lifespan(app: FastAPI):
     Application lifespan manager.
     
     Handles startup and shutdown events:
-    - Startup: Warm up Whisper model, start background cleanup task
+    - Startup: Start background cleanup task, load Whisper asynchronously
     - Shutdown: Cancel cleanup task gracefully
     """
     global _cleanup_task
@@ -89,16 +74,23 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("🚀 InterView AI API starting...")
     
-    # Warm up Whisper model before accepting traffic
-    logger.info("🔥 Pre-loading Whisper STT model...")
+    # Start background cleanup task
+    _cleanup_task = asyncio.create_task(background_cleanup_task())
+    
+    # Warm up Whisper model asynchronously (non-blocking)
+    logger.info("🔥 Pre-loading Whisper STT model (background)...")
     try:
-        from src.infra.speech.stt import WhisperSTT
-        stt = WhisperSTT()
-        logger.info("✅ Whisper model loaded successfully")
+        def load_whisper():
+            from src.infra.speech.stt import WhisperSTT
+            stt = WhisperSTT()
+            logger.info("✅ Whisper model loaded successfully")
+        
+        # Run in thread pool to avoid blocking startup
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(None, load_whisper)
+        logger.info("📦 Whisper model loading started in background (server will be ready immediately)")
     except Exception as e:
         logger.warning(f"⚠️ Whisper model warmup failed (will retry on first use): {e}")
-    
-    _cleanup_task = asyncio.create_task(background_cleanup_task())
     
     yield
     
