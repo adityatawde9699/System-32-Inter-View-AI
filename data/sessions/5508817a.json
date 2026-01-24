@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "session_id": "5508817a",
+  "state": "evaluating",
+  "resume_text": "Mahesh Kirde [Phone Number] | [Email Address] | [LinkedIn Profile/Portfolio] Professional Summary Motivated B.Tech student specializing in Artificial Intelligence with a strong foundation in Python and Web Development. Passionate about building intelligent systems, demonstrated through the development of a personal AI voice assistant and a unified data management engine. Seeking a Summer 2026 internship in Machine Learning to apply technical skills and contribute to innovative AI solutions. Core Competencies Artificial Intelligence | Python Programming | Web Development Flask Framework | Data Visualization | HTML/JavaScript Project Experience Personal AI Voice Assistant (\"Micky\") | Personal Project | [Start Date] \u2013 Present \u2022 Developing a modular AI voice assistant using Python to automate tasks and enhance user interaction. \u2022 Implemented voice recognition and response capabilities, focusing on modular code architecture for easy feature expansion. Unified Data Management Engine (UDME) | System Development Project \u2022 Designed and built a comprehensive data management system using Python and Flask for the backend. \u2022 Developed a dynamic frontend using HTML, JavaScript, and Chart.js to visualize complex data sets effectively. \u2022 Streamlined data handling processes, improving data accessibility and presentation. Education B.Tech in Artificial Intelligence | [University Name] | [Expected Graduation Year] Certifications & Skills \u2022 Technical Skills: Python, Flask, JavaScript, HTML/CSS, Chart.js, Machine Learning Concepts. \u2022 Soft Skills: Problem-solving, Project Management, Continuous Learning. \u2022 [Add any specific certifications here, e.g., \"Certified Python Programmer\" or \"Google AI Essentials\"]",
+  "job_description": "Senior Data Engineer at Google",
+  "current_question": "Your personal AI voice assistant, \"Micky,\" sounds like a fascinating project. Could you tell me more about the most challenging aspect you've encountered so far in developing its modular architecture and how you approached overcoming it?",
+  "started_at": "2026-01-24T14:32:28.564717",
+  "ended_at": null,
+  "total_questions_asked": 1,
+  "total_filler_words": 1,
+  "average_wpm": 0.0,
+  "exchanges": [
+    {
+      "question": "Your personal AI voice assistant, \"Micky,\" sounds like a fascinating project. Could you tell me more about the most challenging aspect you've encountered so far in developing its modular architecture and how you approached overcoming it?",
+      "answer": "So I'm not going to work on that in future, it's just for time pass.",
+      "duration_seconds": 0,
+      "timestamp": "2026-01-24T14:33:14.225923",
+      "evaluation": {
+        "technical_accuracy": 1,
+        "clarity": 1,
+        "depth": 1,
+        "completeness": 1,
+        "improvement_tip": "The candidate should have directly addressed the question about the challenges of developing Micky's modular architecture and how they overcame them, providing specific technical details and examples. Acknowledging the project's purpose and providing a relevant answer is crucial.",
+        "positive_note": "None observed."
+      },
+      "coaching": {
+        "volume_status": "OK",
+        "pace_status": "OK",
+        "filler_count": 1,
+        "words_per_minute": 0.0,
+        "primary_alert": "\u2705 Great delivery! Keep it up.",
+        "alert_level": "ok"
+      }
+    }
+  ]
+}
