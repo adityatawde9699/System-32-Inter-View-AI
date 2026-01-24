@@ -7,7 +7,7 @@
 # -----------------------------------------------------------------------------
 # Core AI
 # -----------------------------------------------------------------------------
-google-generativeai>=0.8.5  # Gemini API
+google-genai>=0.3.0         # Gemini API (new package, replacing google-generativeai)
 faster-whisper>=1.0.0       # Local STT (requires CUDA for GPU acceleration)
 pypdf>=4.0.0                # Resume PDF parsing
 
@@ -33,8 +33,11 @@ redis>=5.0.0                # Redis client (optional, for session store)
 # streamlit>=1.30.0
 # streamlit-webrtc>=0.47.0
 
-# -----------------------------------------------------------------------------
-# Configuration & Utils
+# -----------------------------------------------------------------------------# Firebase (Backend Services)
+# -------------------------------------------------------------------------
+firebase-admin>=6.0.0       # Firebase Admin SDK
+
+# -------------------------------------------------------------------------# Configuration & Utils
 # -----------------------------------------------------------------------------
 python-dotenv>=0.21.0       # Environment variable loading (compatible with ggshield)
 pydantic>=2.0.0             # Data validation

@@ -144,7 +144,7 @@ python main.py
 python main.py --cli
 
 # Additional options
-python main.py --host 0.0.0.0 --port 8080 --debug
+python main.py --host 0.0.0.0 --port 8000 --debug
 ```
 
 ## Usage

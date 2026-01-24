@@ -35,23 +35,43 @@ def create_data_directories():
         dir_path.mkdir(parents=True, exist_ok=True)
 
 
-def run_server(host: str = "127.0.0.1", port: int = 8000):
+def run_server(host: str = None, port: int = None):
     """Launch the FastAPI server with uvicorn."""
     import uvicorn
+    import os
+    
+    # Support Railway and other cloud platforms
+    if host is None:
+        # Use 0.0.0.0 for production (Railway), 127.0.0.1 for local
+        host = os.getenv("HOST", "0.0.0.0" if os.getenv("RAILWAY_ENVIRONMENT") else "127.0.0.1")
+    
+    if port is None:
+        # Always use port 8000
+        port = 8000
+    
+    # Disable hot reload in production
+    is_production = bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RENDER"))
+    enable_reload = not is_production
     
     print("\n" + "=" * 60)
     print("🎙️  InterView AI - Real-Time Career Coach")
     print("=" * 60)
     print(f"\n🌐 Open in browser: http://{host}:{port}")
     print(f"📚 API Docs: http://{host}:{port}/api/docs")
+    print(f"🏢 Environment: {'Production' if is_production else 'Development'}")
     print("\nPress Ctrl+C to stop the server\n")
     
+    # Production: use single worker without reload
+    # Development: use reload with reload_dirs
     uvicorn.run(
         "src.api.app:app",
         host=host,
         port=port,
-        reload=True,  # Enable hot reload for development
+        reload=enable_reload,
+        reload_dirs=["src"] if enable_reload else None,
+        workers=1,
         log_level="info",
+        access_log=False,  # Reduce log noise
     )
 
 
@@ -153,14 +173,14 @@ def main():
     )
     parser.add_argument(
         "--host",
-        default="127.0.0.1",
-        help="Host to bind the server (default: 127.0.0.1)",
+        default=None,
+        help="Host to bind the server (default: auto-detect from environment)",
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=8000,
-        help="Port to bind the server (default: 8000)",
+        default=None,
+        help="Port to bind the server (default: auto-detect from environment)",
     )
     parser.add_argument(
         "--debug",
@@ -179,10 +199,8 @@ def main():
         os.environ["LOG_LEVEL"] = "DEBUG"
     
     # Run
-    if args.cli:
-        asyncio.run(run_cli_demo())
-    else:
-        run_server(host=args.host, port=args.port)
+    
+    run_server(host=args.host, port=args.port)
 
 
 if __name__ == "__main__":
